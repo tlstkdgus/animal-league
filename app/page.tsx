@@ -14,8 +14,6 @@ const PREVIEW_CHARACTERS = ['01', '14', '27', '41', '52', '68'];
 
 const COMPONENTS = [
   ['SpinningCard3D', 'three.js 3D 회전 카드 (앞/뒷면 텍스처, 기울기 ref로 제어)'],
-  ['CardCarousel', '원호 배치 17장 캐러셀 — 드래그/휠 관성, 스냅, 선택 연출'],
-  ['ResultCard', '홀로그램 결과 카드 — 커서 추적 틸트, holo 마스크, 파티클'],
   ['TicketIntro', '사자 영상이 들어간 인트로 화면'],
   ['CodeInput', '5칸 코드 입력 (붙여넣기 자동 분배, 흔들림 에러 연출)'],
   ['UniversitySelect', '학교 그리드/리스트 — 80종 로고 매핑 연동'],

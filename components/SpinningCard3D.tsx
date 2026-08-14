@@ -45,17 +45,20 @@ function faceGeometry(shape: THREE.Shape) {
 function Card({ tiltRef, zTiltRef }: { tiltRef: RefObject<number>; zTiltRef: RefObject<number> }) {
   const outerRef = useRef<THREE.Group>(null);
   const ref = useRef<THREE.Group>(null);
-  const [front, back] = useTexture(['/card-back-Q.png', '/card-back-0624.png']);
+  // 텍스처 설정은 로드 콜백 안에서 한다.
+  // 훅이 돌려준 값을 바깥에서 변형하면 react-hooks/immutability 에 걸린다.
+  const [front, back] = useTexture(['/card-back-Q.png', '/card-back-0624.png'], (loaded) => {
+    for (const texture of Array.isArray(loaded) ? loaded : [loaded]) {
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.anisotropy = 8;
+    }
+  });
 
   const { bodyGeo, faceGeo, bodyMat, frontMat, backMat } = useMemo(() => {
     const shape = roundedRectShape(W, H, R);
     const body = new THREE.ExtrudeGeometry(shape, { depth: DEPTH, bevelEnabled: false });
     body.translate(0, 0, -DEPTH / 2);
     const face = faceGeometry(shape);
-    front.colorSpace = THREE.SRGBColorSpace;
-    back.colorSpace = THREE.SRGBColorSpace;
-    front.anisotropy = 8;
-    back.anisotropy = 8;
     return {
       bodyGeo: body,
       faceGeo: face,

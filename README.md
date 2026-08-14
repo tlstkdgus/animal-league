@@ -37,8 +37,6 @@ Next.js 16.2.9 / React 19 / Tailwind CSS v4 / three.js (@react-three/fiber, drei
 | 컴포넌트 | 설명 | 쓰는 에셋 |
 |----------|------|-----------|
 | `SpinningCard3D` | three.js 3D 회전 카드. 기울기를 `tiltRef` / `zTiltRef` 로 받아 리렌더 없이 제어 | 카드 뒷면 2종 |
-| `CardCarousel` | 원호 배치 17장 캐러셀. 드래그·휠 관성, 스냅, 선택 확인 팝업, 파티클 연출 | `card-back-0624.png` |
-| `ResultCard` | 홀로그램 결과 카드. 커서 추적 틸트(스프링 보간), holo 마스크, stardust 파티클 | `holo-pattern.png` |
 | `TicketIntro` | 사자 영상이 들어간 인트로 화면 | 사자 mp4 + webp |
 | `CodeInput` | 5칸 코드 입력. 붙여넣기 자동 분배, 에러 시 흔들림 | — |
 | `UniversitySelect` | 학교 그리드(PC) / 리스트(모바일) | `logos/*` |
@@ -47,6 +45,20 @@ Next.js 16.2.9 / React 19 / Tailwind CSS v4 / three.js (@react-three/fiber, drei
 
 `UniversitySelect` 는 `lib/types.ts` 의 최소 `University` 타입(`id`, `name`, `assigned_character_id`)만 씁니다.
 원본의 DB 스키마는 가져오지 않았으니 새 데이터 소스에 맞춰 확장하세요.
+
+### 되살릴 수 있는 컴포넌트
+
+`CardCarousel`(원호 캐러셀)과 `ResultCard`(홀로그램 카드)는 초기 커밋에는 있었지만,
+이 앱에서 쓰지 않는 데다 React 19 컴파일러 룰을 위반해 CI를 막아서 뺐습니다.
+동작을 확인할 화면이 없는 상태에서 고치는 것보다, 실제로 필요해질 때 되살리며 함께 고치는 편이 안전합니다.
+
+```bash
+git show 0017ca7:components/ResultCard.tsx > components/ResultCard.tsx
+git show 0017ca7:components/CardCarousel.tsx > components/CardCarousel.tsx
+```
+
+되살릴 때 고쳐야 할 것 — `ResultCard`: 자기 참조 `tick` 콜백(선언 전 접근),
+effect 내 `setSparks`. `CardCarousel`: mount 감지·인트로 회전의 effect 내 setState, 렌더 경로의 `Date.now()`.
 
 ## 가져오지 않은 것
 
