@@ -1,0 +1,30 @@
+@import url('https://cdn.jsdelivr.net/gh/sunn-us/SUIT/fonts/variable/woff2/SUIT-Variable.css');
+@import url('https://fonts.googleapis.com/css2?family=Anton&display=swap');
+@import "tailwindcss";
+
+:root {
+  --bg: #0e0e0e;
+  --surface: #1a1a1a;
+  --surface2: #232323;
+  --border: rgba(255,255,255,0.07);
+  --text: #f0f0f0;
+  --text-sub: rgba(255,255,255,0.45);
+  --orange: #FF6000;
+  --orange-glow: rgba(255,96,0,0.18);
+}
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'SUIT Variable', 'SUIT', Arial, Helvetica, sans-serif;
+  min-height: 100dvh;
+}
