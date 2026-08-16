@@ -13,13 +13,21 @@ export type StateRow = { data: TournamentState; rev: number };
 const TABLE = 'tournament_state';
 const MAX_RETRIES = 3;
 
+/** 필드가 추가되기 전에 저장된 문서 보정. judges 는 명단제(2026-08-17) 이전 행에 없다. */
+function migrate(row: StateRow): StateRow {
+  if (!Array.isArray(row.data.judges)) {
+    return { ...row, data: { ...row.data, judges: [] } };
+  }
+  return row;
+}
+
 /** 현재 상태를 읽는다. 행이 없으면 (최초 접근) 초기 브래킷으로 만들고 그 값을 돌려준다. */
 export async function ensureState(): Promise<StateRow> {
   const db = supabaseAdmin();
 
   const { data, error } = await db.from(TABLE).select('data, rev').eq('id', 1).maybeSingle();
   if (error) throw new Error(`상태 읽기 실패: ${error.message}`);
-  if (data) return data as StateRow;
+  if (data) return migrate(data as StateRow);
 
   // 최초 접근 — 초기 브래킷으로 생성. 동시에 두 요청이 들어와도
   // id=1 PK 충돌로 한쪽만 성공하므로, 실패하면 그냥 다시 읽는다.
@@ -31,7 +39,7 @@ export async function ensureState(): Promise<StateRow> {
 
   const reread = await db.from(TABLE).select('data, rev').eq('id', 1).single();
   if (reread.error) throw new Error(`상태 재읽기 실패: ${reread.error.message}`);
-  return reread.data as StateRow;
+  return migrate(reread.data as StateRow);
 }
 
 /**

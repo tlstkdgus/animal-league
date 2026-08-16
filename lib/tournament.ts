@@ -51,6 +51,8 @@ export type Match = {
 export type TournamentState = {
   teams: Team[];
   matches: Match[];
+  /** 심사위원 명단 (SPEC §3 명단제). 명단 밖 명의의 제출은 서버가 거부한다. */
+  judges: string[];
   judgeCode: string;
   adminPin: string;
 };
@@ -70,7 +72,10 @@ export type TournamentErrorCode =
   | 'FINAL_ALREADY_SET'
   | 'INVALID_TEAM_INDEX'
   | 'INVALID_TRACK'
-  | 'INVALID_CODE';
+  | 'INVALID_CODE'
+  | 'INVALID_JUDGE_NAME'
+  | 'JUDGE_DUPLICATE'
+  | 'JUDGE_NOT_FOUND';
 
 /** 가드 위반. API 라우트에서 code 로 상태 코드를, message 로 운영 화면 문구를 만든다. */
 export class TournamentError extends Error {
@@ -108,6 +113,7 @@ export function createInitialState(overrides?: Partial<TournamentState>): Tourna
       { id: 'R2-2', round: 2, a: null, b: null, status: 'ready', winner: null },
       { id: 'F', round: 3, a: null, b: null, status: 'ready', winner: null },
     ],
+    judges: [],
     judgeCode: 'ANIMAL',
     adminPin: '0825',
     ...overrides,
@@ -353,18 +359,63 @@ export function matchesJudgeCode(state: TournamentState, input: string): boolean
 }
 
 // ------------------------------------------------------------
+// 심사위원 명단 (SPEC §3 명단제)
+// ------------------------------------------------------------
+
+export const JUDGE_NAME_MAX = 30;
+
+/**
+ * 명의 키. "김 심사"와 "김심사"가 다른 명의가 되면 재제출 덮어쓰기가 깨지므로
+ * NFC 정규화 + 공백 제거 + 소문자화로 통일한다. votes.judge_slug 에 이 값이 들어간다.
+ */
+export function judgeSlug(name: string): string {
+  return name.normalize('NFC').replace(/\s+/g, '').toLowerCase();
+}
+
+/** 명단에서 명의를 찾아 등록된 표기 그대로 돌려준다. 없으면 null — 제출 거부 신호. */
+export function findJudge(state: TournamentState, name: string): string | null {
+  const slug = judgeSlug(name);
+  return state.judges.find((j) => judgeSlug(j) === slug) ?? null;
+}
+
+export function addJudge(state: TournamentState, name: string): TournamentState {
+  const trimmed = name.trim();
+  if (trimmed.length === 0 || trimmed.length > JUDGE_NAME_MAX) {
+    throw new TournamentError('INVALID_JUDGE_NAME', `이름은 1~${JUDGE_NAME_MAX}자여야 합니다.`);
+  }
+  if (findJudge(state, trimmed) !== null) {
+    // 동명이인은 구분자를 붙여 등록한다 (예: "김OO A") — SPEC §3
+    throw new TournamentError('JUDGE_DUPLICATE', `"${trimmed}" 은 이미 등록된 명의입니다.`);
+  }
+  return { ...state, judges: [...state.judges, trimmed] };
+}
+
+export function removeJudge(state: TournamentState, name: string): TournamentState {
+  if (findJudge(state, name) === null) {
+    throw new TournamentError('JUDGE_NOT_FOUND', `"${name.trim()}" 은 명단에 없습니다.`);
+  }
+  const slug = judgeSlug(name);
+  return { ...state, judges: state.judges.filter((j) => judgeSlug(j) !== slug) };
+}
+
+// ------------------------------------------------------------
 // 초기화
 // ------------------------------------------------------------
 
 /**
  * 브래킷 전체 초기화. 리허설 데이터를 지우고 본 행사에 들어갈 때 쓴다 (SPEC §5).
- * vote 레코드 삭제는 서버 레이어의 몫이다.
+ * vote 레코드 삭제는 서버 레이어의 몫이다 — **votes 를 먼저 지우고 이걸 호출**해야
+ * 경기 ID 재사용 때문에 리허설 표가 본 행사 집계에 섞이지 않는다.
  *
- * 심사 코드와 운영 PIN 은 항상 유지한다 — 초기화하면 운영자가 자기 화면에서 잠긴다.
- * 팀 명단은 기본적으로 남기고, 리허설용 더미였다면 clearTeams 로 비운다.
+ * 심사 코드·운영 PIN·심사위원 명단은 항상 유지한다 — 초기화하면 운영자가 자기 화면에서 잠기거나
+ * 명단을 다시 쳐야 한다. 팀 명단은 기본적으로 남기고, 리허설용 더미였다면 clearTeams 로 비운다.
  */
 export function reset(state: TournamentState, opts?: { clearTeams?: boolean }): TournamentState {
-  const fresh = createInitialState({ judgeCode: state.judgeCode, adminPin: state.adminPin });
+  const fresh = createInitialState({
+    judgeCode: state.judgeCode,
+    adminPin: state.adminPin,
+    judges: [...state.judges],
+  });
   if (opts?.clearTeams) return fresh;
   return { ...fresh, teams: state.teams.map((t) => ({ ...t })) };
 }

@@ -54,21 +54,25 @@
   PIN 변경 시 기존 세션 자동 무효화. 심사 코드는 세션 없이 제출마다 대조
 - `schema.sql` Supabase 적용 확인됨 (2026-08-16)
 
-### 3. API 라우트
-선행: `lib/tournament.ts` 에 `judges` 명단 추가 (타입 + `addJudge`/`removeJudge` + `judgeSlug()` 정규화).
+### 3. ~~API 라우트~~ — 완료
 
 | 경로 | 인증 | 용도 |
 |------|------|------|
-| `GET /api/state` | 공개 | 스크린·심사용. **`judgeCode`/`adminPin`/`judges` 제거 후 반환**. CDN 캐시 `s-maxage=2` |
+| `GET /api/state` | 공개 | 공개 스냅샷 (비밀값·명단 제거). CDN 캐시 `s-maxage=2` |
 | `POST /api/judge/auth` | 심사 코드 | 코드 검증 → 심사위원 명단 반환 (이름 선택용) |
-| `POST /api/vote` | 심사 코드 | 제출 upsert. **명단 밖 명의·live 아닌 경기 거부**, ts 서버 스탬프, 이름 30자·코멘트 500자 |
-| `POST /api/admin/auth` | PIN | 로그인, 파생 토큰 쿠키 발급 |
-| `POST /api/admin/action` | 쿠키 | 상태 변경 액션 단일 진입점. **초기화는 votes 삭제 → 상태 리셋 순서** |
-| `GET /api/admin/votes?matchId=` | 쿠키 | 집계 열람 |
+| `POST /api/vote` | 심사 코드 | 제출 upsert. 명단 밖 명의 403 · live 아닌 경기 409 · ts 서버 스탬프 |
+| `POST /api/admin/auth` | PIN | 로그인 (DELETE = 로그아웃) |
+| `GET /api/admin/state` | 쿠키 | 운영용 스냅샷 (명단·심사코드·트랙 경고 포함) |
+| `POST /api/admin/action` | 쿠키 | 액션 단일 진입점. 응답에 최신 운영 스냅샷 포함 |
+| `GET /api/admin/votes?matchId=` | 쿠키 | 집계 (행 + tally) |
 
-`proxy.ts` 로 `/api/admin/*` 가드 (`/api/admin/auth` 는 제외).
-**클라이언트 검증만으로 끝내지 말 것** — SPEC §7.
-잡무 함께: 웹폰트 셀프호스트(현재 CDN @import), `package.json` 이름·`layout.tsx` 메타데이터를 animal-league 로.
+- 응답 규약: `{ ok: true, ... }` / `{ ok: false, error: { code, message } }` — 가드 위반은 409 + code
+- `proxy.ts`: `/api/admin/*` 쿠키 존재 1차 가드, 최종 판정은 각 핸들러의 `isAdminSession()`
+- `admin/action` 액션: `startMatch` `revealResult` `drawRound2` `setFinal` `updateTeam`
+  `setJudgeCode` `setAdminPin`(쿠키 재발급 포함) `addJudge` `removeJudge` `reset`(votes 선삭제)
+- 실서버 스모크 20개 시나리오 통과 (한글 명의 표기 흔들림 포함). DB 는 초기 상태로 정리됨
+- 잡무 완료: 웹폰트 셀프호스트(SUIT next/font/local + Anton next/font/google),
+  `animal-league` 로 개명, `--font-suit`/`--font-display` 토큰
 
 ### 4. 화면 3개
 독립적이라 병렬 진행 가능. 각각 별도 브랜치·PR.

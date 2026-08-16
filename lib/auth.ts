@@ -40,15 +40,28 @@ export function tokensEqual(a: string, b: string): boolean {
 export async function grantAdminSession(state: TournamentState, pin: string): Promise<boolean> {
   if (!tokensEqual(deriveAdminToken(pin), deriveAdminToken(state.adminPin))) return false;
 
+  await setAdminCookie(state.adminPin);
+  return true;
+}
+
+/**
+ * PIN 에 대응하는 세션 쿠키를 (재)발급한다. PIN 변경 직후에도 호출해
+ * 변경한 운영자 본인이 잠기지 않게 한다.
+ *
+ * secure 플래그는 오프라인 폴백(로컬 production 빌드에 LAN IP + http 로 접속) 때만
+ * ALLOW_INSECURE_ADMIN_COOKIE=1 로 끌 수 있다. 배포 환경에서는 절대 켜지 말 것.
+ */
+export async function setAdminCookie(pin: string): Promise<void> {
   const store = await cookies();
-  store.set(ADMIN_COOKIE, deriveAdminToken(state.adminPin), {
+  store.set(ADMIN_COOKIE, deriveAdminToken(pin), {
     httpOnly: true,
     sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
+    secure:
+      process.env.NODE_ENV === 'production' &&
+      process.env.ALLOW_INSECURE_ADMIN_COOKIE !== '1',
     maxAge: COOKIE_MAX_AGE,
     path: '/',
   });
-  return true;
 }
 
 /** 현재 요청이 유효한 운영 세션인지. PIN 이 바뀌었으면 옛 쿠키는 자동으로 불일치. */
