@@ -48,13 +48,11 @@
 
 ### 1. ~~토너먼트 로직~~ — 완료 (`lib/tournament.ts` + 테스트 27개)
 
-### 2. 서버 레이어 — `lib/supabaseAdmin.ts`, `lib/state.ts`, `lib/auth.ts`
-`@supabase/supabase-js` 설치부터 (아직 의존성에 없음).
-- Supabase 서비스 롤 클라이언트. **모듈 최상단에서 throw 금지** (키 없이도 빌드돼야 함, CI가 검사)
-- `ensureState()` — 행 없으면 초기 브래킷으로 생성
-- `mutate(fn)` — 읽기 → 변형 → `UPDATE ... WHERE rev = <읽은 값>` → 0행이면 재시도 (최대 3회)
-- PIN / 심사 코드 검증. 운영 세션은 파생 토큰 쿠키 방식
-  (원본 `capsule-match` 의 `lib/adminAuth.ts` 패턴 참고 — 비밀번호 원문을 쿠키에 넣지 않음)
+### 2. ~~서버 레이어~~ — 완료 (`lib/supabaseAdmin.ts` `lib/state.ts` `lib/auth.ts`)
+- 실제 Supabase 에 스모크 테스트 통과 (초기 행 생성 · 비밀값 제거 · rev 잠금 · 초기화)
+- 운영 세션: PIN 을 서비스 롤 키로 HMAC 한 파생 토큰 쿠키(`al_admin`, 18h).
+  PIN 변경 시 기존 세션 자동 무효화. 심사 코드는 세션 없이 제출마다 대조
+- `schema.sql` Supabase 적용 확인됨 (2026-08-16)
 
 ### 3. API 라우트
 | 경로 | 인증 | 용도 |
