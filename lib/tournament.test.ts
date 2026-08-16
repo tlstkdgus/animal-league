@@ -6,9 +6,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  addJudge,
   createInitialState,
   drawRound2,
+  findJudge,
   getMatch,
+  judgeSlug,
+  removeJudge,
   liveMatch,
   matchesJudgeCode,
   reset,
@@ -320,6 +324,46 @@ test('심사 코드는 대소문자·앞뒤 공백을 무시하고 대조한다'
   assert.equal(matchesJudgeCode(s, 'animal'), true);
   assert.equal(matchesJudgeCode(s, '  ANIMAL '), true);
   assert.equal(matchesJudgeCode(s, 'anima'), false);
+});
+
+// ------------------------------------------------------------
+// 심사위원 명단
+// ------------------------------------------------------------
+
+test('명의 키는 공백·대소문자·유니코드 표기 차이를 무시한다', () => {
+  assert.equal(judgeSlug('김 심사'), judgeSlug('김심사'));
+  assert.equal(judgeSlug('Kim Judge'), judgeSlug('kimjudge'));
+  // NFD(자모 분해)로 들어와도 NFC 와 같은 키
+  assert.equal(judgeSlug('김심사'.normalize('NFD')), judgeSlug('김심사'));
+});
+
+test('명단 등록·조회·삭제', () => {
+  let s = addJudge(createInitialState(), '김심사');
+  s = addJudge(s, '이심사');
+
+  assert.deepEqual(s.judges, ['김심사', '이심사']);
+  assert.equal(findJudge(s, '김 심사'), '김심사'); // 표기 흔들림에도 등록명 반환
+  assert.equal(findJudge(s, '박심사'), null);
+
+  s = removeJudge(s, '김 심사');
+  assert.deepEqual(s.judges, ['이심사']);
+});
+
+test('중복 명의·없는 명의·빈 이름은 거부', () => {
+  const s = addJudge(createInitialState(), '김심사');
+
+  expectError('JUDGE_DUPLICATE', () => addJudge(s, '김 심사'));
+  expectError('JUDGE_NOT_FOUND', () => removeJudge(s, '박심사'));
+  expectError('INVALID_JUDGE_NAME', () => addJudge(s, '  '));
+  expectError('INVALID_JUDGE_NAME', () => addJudge(s, '가'.repeat(31)));
+});
+
+test('초기화해도 심사위원 명단은 유지된다', () => {
+  let s = addJudge(seeded(), '김심사');
+  s = play(s, 'R1-1', 'A');
+
+  assert.deepEqual(reset(s).judges, ['김심사']);
+  assert.deepEqual(reset(s, { clearTeams: true }).judges, ['김심사']);
 });
 
 // ------------------------------------------------------------
