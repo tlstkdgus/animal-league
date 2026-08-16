@@ -1,7 +1,15 @@
-# character-cards
+# animal-league
 
-캐릭터 카드 에셋과 재사용 컴포넌트를 모아둔 Next.js 프로젝트입니다.
-`capsule-match` 프로젝트에서 에셋과 컴포넌트만 가져왔고, **git 히스토리는 이어받지 않았습니다.**
+**2026 LIKELION UNIV. 14th Hackathon 본선 토너먼트 운영 도구** (8/25, 코엑스 마곡).
+스크린 · 심사 · 운영 3개 화면으로 브래킷 진행과 심사를 관리합니다.
+
+| 문서 | 내용 |
+|------|------|
+| [docs/SPEC.md](docs/SPEC.md) | **요구사항 단일 출처** — 토너먼트 규칙, 데이터 모델, 화면 명세 |
+| [docs/HANDOFF.md](docs/HANDOFF.md) | **현재 진행 상황과 다음 작업** — 작업 시작 전 여기부터 |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | 브랜치 · 커밋 · 릴리스 전략 |
+
+에셋과 컴포넌트는 `capsule-match` 프로젝트에서 가져왔고, **git 히스토리는 이어받지 않았습니다.**
 
 ## 실행
 
