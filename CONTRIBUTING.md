@@ -62,7 +62,55 @@ security(api): validate admin PIN server-side on every write
 
 ---
 
-## 병합
+## PR
+
+### 단위
+
+**PR 하나 = 작업 하나.** 화면 하나, 기능 하나, 결정 묶음 하나.
+diff가 500줄을 넘으면 쪼갤 신호다 (에셋·스크린샷·잠금 파일 제외).
+서로 다른 화면을 한 PR에 섞지 않는다 — 당일 롤백이 화면 단위로 돼야 한다.
+
+### 본문
+
+`.github/pull_request_template.md` 의 섹션을 채운다. 특히:
+
+- **명세 근거** — SPEC 조항 번호까지. 규정 기반 프로젝트라 "왜"가 곧 조항이다
+- **확인한 것** — 실제로 해본 것만 체크. 안 해봤으면 비워 둔다 (거짓 체크가 최악)
+- **UI를 바꿨다면 스크린샷 필수** — 아래 규약대로
+
+### 스크린샷 (UI 변경 PR 필수)
+
+화면을 만들거나 바꾼 PR은 **스크린샷 없이 머지하지 않는다.**
+리뷰어가 없는 프로젝트라, 스크린샷이 곧 시각적 리뷰 기록이다.
+
+**캡처** — 개발 서버를 띄우고:
+
+```bash
+npx playwright install chromium        # 최초 1회
+node scripts/shot.mjs http://localhost:3000/admin admin-live
+# → docs/screenshots/admin-live-desktop.png (1440×900)
+# → docs/screenshots/admin-live-mobile.png  (390×844)
+```
+
+- 스크린(viewer) 화면은 `--screen` (1920×1080, 프로젝터 기준)도 찍는다
+- 심사(judge) 화면은 `--mobile` 이 주 뷰포트다
+- 로그인 뒤 상태처럼 CLI로 못 찍는 화면은 브라우저에서 수동 캡처해 같은 폴더에 넣는다
+
+**규약**
+
+- 파일은 `docs/screenshots/` 에 두고 **PR 브랜치에 함께 커밋**한다 — 커밋에 남는 것이 기록이다
+- 파일명: `<slug>-<뷰포트>.png`, slug 는 브랜치명에서 따온다 (`feat/admin-screen` → `admin-*`)
+- 신규 화면은 **주요 상태별로 전부**: 대기 / live / done / 우승 연출 / 에러·빈 상태
+- 기존 화면 변경은 **before / after** 한 쌍
+- PR 본문에는 커밋 **SHA 고정 raw URL** 로 임베드한다 — 브랜치를 지워도 이미지가 살아남는다:
+
+```markdown
+![admin-live](https://raw.githubusercontent.com/tlstkdgus/animal-league/<커밋SHA>/docs/screenshots/admin-live-desktop.png)
+```
+
+- 화면이 확정되어 다음 상태로 바뀐 옛 스크린샷은 지워도 된다 (히스토리에 남는다)
+
+### 병합
 
 **Squash merge만 사용한다.** `main` 히스토리는 PR 하나당 커밋 하나가 되어,
 당일에 문제가 생겼을 때 되돌릴 단위가 명확해진다.
@@ -75,6 +123,9 @@ gh pr merge --squash --delete-branch
 리뷰어가 없더라도 PR을 거치는 이유는 세 가지다.
 CI가 타입체크·빌드·린트를 막아주고, 머지 전에 diff를 스스로 한 번 읽게 되고,
 되돌릴 단위가 커밋 하나로 딱 떨어진다.
+
+**머지 전 셀프 리뷰**: `gh pr diff` 를 처음부터 끝까지 한 번 읽는다.
+디버그 로그, 주석 처리된 코드, 우연히 딸려 온 파일이 이 단계에서 걸린다.
 
 ---
 
