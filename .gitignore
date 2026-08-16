@@ -32,6 +32,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# 값이 빈 템플릿만 예외로 올린다. 실제 키가 든 .env.local 은 위 규칙으로 계속 차단됨
+!.env*.example
 
 # 로컬 전용 비밀값 — 절대 커밋하지 말 것
 *.local.json
