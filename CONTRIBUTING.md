@@ -98,16 +98,20 @@ node scripts/shot.mjs http://localhost:3000/admin admin-live
 
 **규약**
 
-- 파일은 `docs/screenshots/` 에 두고 **PR 브랜치에 함께 커밋**한다 — 커밋에 남는 것이 기록이다
+- 파일은 `docs/screenshots/` 에 두고 **PR 브랜치에 함께 커밋**한다 — 커밋에 남는 것이 기록이고,
+  PR 의 **Files changed 탭이 추가된 PNG 를 그대로 렌더**해 주므로 그게 1차 리뷰 경로다
 - 파일명: `<slug>-<뷰포트>.png`, slug 는 브랜치명에서 따온다 (`feat/admin-screen` → `admin-*`)
 - 신규 화면은 **주요 상태별로 전부**: 대기 / live / done / 우승 연출 / 에러·빈 상태
 - 기존 화면 변경은 **before / after** 한 쌍
-- PR 본문에는 커밋 **SHA 고정 raw URL** 로 임베드한다 — 브랜치를 지워도 이미지가 살아남는다:
+- PR 본문에는 커밋 SHA 고정 **blob URL 링크**를 단다
+  (저장소가 private 이라 raw URL 임베드는 404 — 링크는 로그인한 멤버에게 열린다):
 
 ```markdown
-![admin-live](https://raw.githubusercontent.com/tlstkdgus/animal-league/<커밋SHA>/docs/screenshots/admin-live-desktop.png)
+[admin-live 데스크톱](https://github.com/tlstkdgus/animal-league/blob/<커밋SHA>/docs/screenshots/admin-live-desktop.png)
 ```
 
+- 본문 안에 이미지를 **인라인으로** 보이고 싶으면 PR 편집창에 파일을 드래그&드롭한다
+  (GitHub 이 user-attachments 로 업로드해 private 에서도 렌더된다). 선택 사항
 - 화면이 확정되어 다음 상태로 바뀐 옛 스크린샷은 지워도 된다 (히스토리에 남는다)
 
 ### 병합
