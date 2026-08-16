@@ -6,6 +6,8 @@
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
+    // Node 24 내장 러너가 .ts 를 직접 실행하므로(타입 스트리핑) 테스트는 확장자를 붙여 import 한다
+    "allowImportingTsExtensions": true,
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",

@@ -23,19 +23,21 @@
 
 ### 백엔드
 - `supabase/schema.sql` 작성 완료 — 테이블 2개 (`tournament_state`, `votes`)
-- `.env.local.example` 및 `.env.local` 생성 (값은 비어 있음)
+- `.env.local` 값 채워짐 (URL + service_role 키)
+
+### 토너먼트 로직 (2026-08-16)
+- `lib/tournament.ts` — 순수 함수 완성. 초기 브래킷 팩토리, Fisher–Yates 추첨,
+  상태 전이 전부 (`startMatch` `revealResult` `drawRound2` `setFinal` `updateTeam`
+  `setJudgeCode` `setAdminPin` `reset`) + 가드 (`TournamentError` 코드 기반)
+- `lib/tournament.test.ts` — 단위 테스트 27개, `npm test` (Node 24 내장 러너, 의존성 없음)
+- CI 에 Test 단계 추가
 
 ---
 
-## ⚠️ 먼저 해야 할 것 — 사람이 직접
+## ⚠️ 사람이 직접 확인할 것
 
-**Supabase 프로젝트가 없으면 그다음이 전부 막힌다.**
-
-1. [supabase.com](https://supabase.com) → New project
-2. 대시보드 **SQL Editor** 에 `supabase/schema.sql` 전체를 붙여넣고 Run
-3. `.env.local` 채우기
-   - `NEXT_PUBLIC_SUPABASE_URL` ← Settings → **Data API** 의 Project URL
-   - `SUPABASE_SERVICE_ROLE_KEY` ← Settings → **API Keys** 의 `service_role` (secret)
+- Supabase 프로젝트 생성 + `.env.local` 채우기 — **완료**
+- **`supabase/schema.sql` 을 SQL Editor 에서 Run 했는지 확인** (안 했으면 서버 레이어가 첫 호출에서 실패)
 
 > 무료 티어는 **일주일간 요청이 없으면 프로젝트가 일시정지**된다.
 > 행사 2~3일 전과 전날에 대시보드를 한 번씩 열어 깨워둘 것.
@@ -44,20 +46,10 @@
 
 ## 다음 작업 (순서대로)
 
-### 1. 토너먼트 로직 — `lib/tournament.ts`
-순수 함수만. DB·React 의존 없이 단위 테스트 가능하게.
-
-- 초기 상태 팩토리 (8팀 빈 슬롯 + 7경기, SPEC §4.1 모양 그대로)
-- Fisher–Yates 셔플 → R2 대진 추첨 (SPEC §2: 트랙 제약 불필요)
-- 상태 전이와 **가드** (SPEC §8):
-  - `startMatch` — 대진 미확정이면 거부, 기존 live 는 ready 로
-  - `revealResult` — 제출 0건이어도 허용 (백업 모드)
-  - `cancelResult` — done → live 롤백, winner 초기화
-  - `drawRound2` — R1 4경기 done + R2 미추첨일 때만
-  - `setFinal` — R2 2경기 done + 결선 미확정일 때만
-  - `reset` — 전체 초기화
+### 1. ~~토너먼트 로직~~ — 완료 (`lib/tournament.ts` + 테스트 27개)
 
 ### 2. 서버 레이어 — `lib/supabaseAdmin.ts`, `lib/state.ts`, `lib/auth.ts`
+`@supabase/supabase-js` 설치부터 (아직 의존성에 없음).
 - Supabase 서비스 롤 클라이언트. **모듈 최상단에서 throw 금지** (키 없이도 빌드돼야 함, CI가 검사)
 - `ensureState()` — 행 없으면 초기 브래킷으로 생성
 - `mutate(fn)` — 읽기 → 변형 → `UPDATE ... WHERE rev = <읽은 값>` → 0행이면 재시도 (최대 3회)
@@ -106,15 +98,13 @@ SPEC §8 체크리스트를 실제로 한 번씩 밟아본다. 특히 동표 경
 | **squash 머지 전용** | 당일 롤백 단위가 커밋 하나로 딱 떨어짐 |
 | **CI Node 24** | 로컬과 동일하게 고정 |
 | **`CardCarousel`·`ResultCard` 제거** | 이 앱이 안 쓰고 렌더할 화면이 없어 React 19 룰 수정을 검증할 수 없었음. 복구법은 README 에 기재 |
+| **결과 취소 없음** (2026-08-16) | `done` 은 종착 상태. 공개가 곧 현장 발표라 롤백해도 발표를 못 되돌리고, 하위 대진 무효화 정책 문제도 함께 사라짐. 대신 공개 버튼에 확인 다이얼로그 필수. 최후 수단은 전체 초기화 |
+| **팀 캐릭터는 학교별 매핑** (2026-08-16) | 각 학교에 맞는 캐릭터 이미지를 팀에 매핑. `Team.character` 에 이미지 키(`char_NN`) 저장. 필요한 이미지는 담당자가 추가 예정 |
 
 ---
 
 ## 미결 사항 (사람이 정해야 함)
 
-- **결과 취소 시 하위 대진 처리** — R2 추첨/결선 확정을 이미 한 뒤 R1 결과를 취소하면
-  하위 대진을 무효화할지. SPEC §8 에 "정책 결정 필요"로 남아 있음.
-  → 잠정: 하위 대진이 이미 확정됐으면 **취소를 막고 경고**하는 쪽이 안전
-- **팀별 캐릭터 이미지 매핑** — `public/characters/char_01~80.png` 중 8팀에 무엇을 쓸지
 - **브랜드 컬러 토큰 · 트랙별 컬러 4종** 실제 값
 - **배포 대상** — Vercel 가정. 계정·프로젝트 연결 필요
 - **실제 팀 명단 · 심사위원 명단** — 저장소에 커밋하지 말 것 (운영 화면에서 입력)
