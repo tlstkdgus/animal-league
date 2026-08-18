@@ -13,7 +13,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { CharacterArt, SchoolTag } from '@/components/ui';
+import { CARD_RADIUS, CharacterArt, SchoolTag } from '@/components/ui';
 import { winningTeamId, type Match, type Team } from '@/lib/tournament';
 
 type PublicState = { teams: Team[]; matches: Match[]; rev: number };
@@ -116,7 +116,7 @@ function VsDivider() {
   return (
     <div className="flex items-center gap-2 px-3" aria-hidden>
       <div className="h-px flex-1 bg-white/6" />
-      <span className="text-[9px] font-extrabold tracking-widest text-white/20">VS</span>
+      <span className="text-[9px] font-extrabold text-white/20">VS</span>
       <div className="h-px flex-1 bg-white/6" />
     </div>
   );
@@ -151,9 +151,9 @@ function MatchCard({
       }}
     >
       <div className="flex items-center justify-between px-3 pb-0.5 pt-1.5">
-        <span className="font-mono text-[11px] font-bold tracking-wider text-white/30">{match.id}</span>
+        <span className="font-mono text-[11px] font-bold text-white/30">{match.id}</span>
         {live && (
-          <span className="live-pulse rounded bg-(--live) px-1.5 py-0.5 text-[10px] font-extrabold tracking-[0.15em] text-white">
+          <span className="live-pulse rounded bg-(--live) px-1.5 py-0.5 text-[10px] font-extrabold text-white">
             LIVE
           </span>
         )}
@@ -320,11 +320,11 @@ function FocusLive({ state, match }: { state: PublicState; match: Match }) {
       <div className="grid w-full max-w-6xl grid-cols-1 items-center gap-8 lg:grid-cols-[1fr_auto_1fr] lg:gap-12">
         <TeamHero state={state} index={match.a} />
         <div className="flex flex-col items-center gap-3">
-          <span className="live-pulse rounded bg-(--live) px-3 py-1 text-sm font-extrabold tracking-[0.2em] text-white">
+          <span className="live-pulse rounded bg-(--live) px-3 py-1 text-sm font-extrabold text-white">
             LIVE
           </span>
-          <span className="font-display text-6xl tracking-wide text-white/85 lg:text-8xl">VS</span>
-          <span className="font-mono text-xs font-bold tracking-[0.2em] text-white/35">
+          <span className="font-display text-6xl text-white/85 lg:text-8xl">VS</span>
+          <span className="font-mono text-xs font-bold text-white/35">
             {match.id} · {match.round === 3 ? 'FINAL' : `ROUND ${match.round}`}
           </span>
         </div>
@@ -392,9 +392,10 @@ function RevealSequence({ state, match }: { state: PublicState; match: Match }) 
           {votes.map((side, i) => (
             <div
               key={i}
-              className="vote-chip relative aspect-2/3 w-16 overflow-hidden rounded-lg border-2 bg-white/5 lg:w-20"
+              className="vote-chip relative aspect-2/3 w-16 overflow-hidden border-2 bg-white/5 lg:w-20"
               onAnimationEnd={() => setOpened((n) => Math.max(n, i + 1))}
               style={{
+                borderRadius: CARD_RADIUS, // 카드 에셋의 베이크 곡률과 일치 (ui.tsx 참조)
                 animationDelay: `${(i * CHIP_INTERVAL_MS) / 1000}s`,
                 borderColor: SIDE_COLORS[side],
                 boxShadow: `0 0 18px color-mix(in srgb, ${SIDE_COLORS[side]} 35%, transparent)`,
@@ -428,7 +429,7 @@ function ChampionTakeover({ state, final }: { state: PublicState; final: Match }
     <div className="champion fixed inset-0 z-50 grid place-items-center overflow-hidden bg-(--bg)">
       <div className="champion-glow absolute h-[120vmin] w-[120vmin] rounded-full" aria-hidden />
       <div className="relative z-10 flex flex-col items-center px-6 text-center">
-        <p className="champion-rise font-display mb-6 text-2xl tracking-[0.35em] text-(--orange) md:text-4xl">
+        <p className="champion-rise font-display mb-6 text-2xl text-(--orange) md:text-4xl">
           CHAMPION
         </p>
         <div className="champion-rise" style={{ animationDelay: '0.25s' }}>
@@ -506,7 +507,7 @@ export default function ViewerPage() {
   if (state === null) {
     return (
       <main className="grid min-h-dvh place-items-center">
-        <p className="font-display text-xl tracking-[0.3em] text-white/30">ANIMAL LEAGUE</p>
+        <p className="font-display text-xl text-white/30">ANIMAL LEAGUE</p>
       </main>
     );
   }
@@ -520,7 +521,7 @@ export default function ViewerPage() {
   return (
     <main className="flex min-h-dvh flex-col px-5 pb-3 pt-5 lg:px-10">
       <style>{`
-        .font-display { font-family: var(--font-anton), var(--font-pretendard), sans-serif; }
+        .font-display { font-family: var(--font-anton), var(--font-suit), sans-serif; }
         .live-pulse { animation: livePulse 1.2s ease-in-out infinite; }
         @keyframes livePulse { 50% { opacity: 0.45; } }
         .card-live { box-shadow: 0 0 28px rgba(255,59,48,0.22); }
@@ -553,20 +554,20 @@ export default function ViewerPage() {
       {/* 헤더 — 좌: 대회 아이덴티티 / 우: 라이브 상태. 배너 행을 없애 브래킷에 세로를 넘긴다 */}
       <header className="mb-2 flex flex-col gap-3 lg:mb-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-[10px] font-bold tracking-[0.3em] text-white/35 lg:text-[11px]">
+          <p className="text-[10px] font-bold text-white/35 lg:text-[11px]">
             2026 LIKELION UNIV. 14TH HACKATHON
           </p>
-          <h1 className="font-display mt-1 text-4xl leading-none tracking-[0.06em] text-(--orange) lg:text-6xl">
+          <h1 className="font-display mt-1 text-4xl leading-none text-(--orange) lg:text-6xl">
             ANIMAL LEAGUE
           </h1>
-          <p className="mt-2 text-[13px] font-bold tracking-[0.35em] text-white/55 lg:text-sm">
+          <p className="mt-2 text-[13px] font-bold text-white/55 lg:text-sm">
             본선 토너먼트 · 8.25 COEX MAGOK
           </p>
         </div>
 
         {live ? (
           <div className="flex items-center gap-4 rounded-xl border border-(--live)/40 bg-(--live)/8 px-5 py-3.5">
-            <span className="live-pulse rounded bg-(--live) px-2 py-1 text-xs font-extrabold tracking-[0.15em] text-white">
+            <span className="live-pulse rounded bg-(--live) px-2 py-1 text-xs font-extrabold text-white">
               LIVE
             </span>
             <div className="min-w-0">
@@ -574,13 +575,13 @@ export default function ViewerPage() {
                 {teamName(state, live.a)} <span className="mx-1 font-bold text-white/30">vs</span>{' '}
                 {teamName(state, live.b)}
               </p>
-              <p className="font-mono text-[11px] font-bold tracking-wider text-white/35">
+              <p className="font-mono text-[11px] font-bold text-white/35">
                 {live.id} · {live.round === 3 ? 'FINAL' : `ROUND ${live.round}`}
               </p>
             </div>
           </div>
         ) : sequence ? null : (
-          <p className="text-sm font-bold tracking-[0.2em] text-white/30">다음 경기를 준비 중입니다</p>
+          <p className="text-sm font-bold text-white/30">다음 경기를 준비 중입니다</p>
         )}
       </header>
 
@@ -598,7 +599,7 @@ export default function ViewerPage() {
           <BracketSide state={state} semi={semi1} fallback={['R1-1', 'R1-2']} revealingId={revealingId} />
           <FinalConnector drawn={final.a !== null} />
           <div className="grid min-w-0 flex-[2.2] content-center gap-3 px-1 2xl:flex-[2.6]">
-            <p className="font-display text-center text-xl tracking-[0.4em] text-white/35">FINAL</p>
+            <p className="font-display text-center text-xl text-white/35">FINAL</p>
             <div className="rounded-2xl border border-(--orange)/25 p-1.5">
               <MatchCard
                 state={state}
@@ -622,7 +623,7 @@ export default function ViewerPage() {
           { label: 'FINAL', matches: [final], undrawn: '결선 대진 확정 전' },
         ].map((group) => (
           <section key={group.label}>
-            <h2 className="font-display mb-2.5 text-sm tracking-[0.3em] text-white/35">{group.label}</h2>
+            <h2 className="font-display mb-2.5 text-sm text-white/35">{group.label}</h2>
             <div className="space-y-3">
               {group.matches.map((m) => (
                 <MatchCard
@@ -640,7 +641,7 @@ export default function ViewerPage() {
         </>
       )}
 
-      <footer className="mt-4 flex items-center justify-between text-[11px] tracking-wide text-white/22">
+      <footer className="mt-4 flex items-center justify-between text-[11px] text-white/22">
         <span>각 경기 종료 후 즉시 발표</span>
         <span>부스 투표 8/28(목) 23:59까지</span>
       </footer>

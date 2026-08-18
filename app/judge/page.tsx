@@ -70,7 +70,7 @@ function EntryGate({ notice, onEnter }: { notice: string; onEnter: (identity: Id
   return (
     <main className="mx-auto grid min-h-dvh w-full max-w-md place-items-center px-6">
       <div className="w-full text-center">
-        <p className="mb-1 text-xs font-bold tracking-[0.2em] text-(--orange)">ANIMAL LEAGUE</p>
+        <p className="mb-1 text-xs font-bold text-(--orange)">ANIMAL LEAGUE</p>
         <h1 className="mb-8 text-2xl font-extrabold">심사위원 입장</h1>
 
         {notice && <p className="mb-4 rounded-xl bg-(--live)/10 px-4 py-3 text-sm text-(--live)">{notice}</p>}
@@ -537,7 +537,7 @@ export default function JudgePage() {
     <main className="mx-auto w-full max-w-md px-4 pb-16 pt-5 md:max-w-4xl md:px-8 md:pt-8">
       <header className="mb-5 flex items-center justify-between md:mb-8">
         <div>
-          <p className="text-[10px] font-bold tracking-[0.2em] text-(--orange) md:text-xs">ANIMAL LEAGUE</p>
+          <p className="text-[10px] font-bold text-(--orange) md:text-xs">ANIMAL LEAGUE</p>
           <h1 className="text-lg font-extrabold md:text-2xl">심사</h1>
         </div>
         <div className="flex items-center gap-2 text-xs text-white/45">

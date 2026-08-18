@@ -18,7 +18,7 @@ export const TRACK_COLORS: Record<Track, string> = {
 export function TrackBadge({ track }: { track: Track }) {
   // 알약 배지 대신 도트 + 텍스트 — 배지가 화면마다 반복되면 스티커처럼 보인다
   return (
-    <span className="inline-flex shrink-0 items-center gap-1.5 text-[11px] font-bold tracking-[0.08em]" style={{ color: TRACK_COLORS[track] }}>
+    <span className="inline-flex shrink-0 items-center gap-1.5 text-[11px] font-bold" style={{ color: TRACK_COLORS[track] }}>
       <span className="h-1.5 w-1.5 rounded-full" style={{ background: TRACK_COLORS[track] }} aria-hidden />
       {track}
     </span>
@@ -69,6 +69,14 @@ export function SchoolTag({
   );
 }
 
+/**
+ * 카드 에셋(640×960)은 곡률 36px 이 이미지에 구워져 있다 — 폭의 5.7%, 높이의 3.8%.
+ * 컨테이너가 고정 px 곡률이면 크기에 따라 에셋과 어긋난다 (디자이너 피드백 8/18:
+ * "카드 에셋과 박스의 곡률이 다르게 보임"). % 곡률로 어떤 크기에서도 일치시킨다.
+ * 사용처는 전부 aspect-2/3 전제 — 가로/세로 % 가 이 비율로 계산되어 있다.
+ */
+export const CARD_RADIUS = '5.7% / 3.8%';
+
 export function CharacterArt({
   characterKey,
   className,
@@ -79,7 +87,10 @@ export function CharacterArt({
   sizes?: string;
 }) {
   return (
-    <div className={`relative overflow-hidden rounded-xl border border-white/10 bg-white/5 ${className ?? ''}`}>
+    <div
+      className={`relative overflow-hidden border border-white/10 bg-white/5 ${className ?? ''}`}
+      style={{ borderRadius: CARD_RADIUS }}
+    >
       {characterKey ? (
         <Image src={`/characters/${characterKey}.png`} alt="" fill sizes={sizes} className="object-cover" />
       ) : (
