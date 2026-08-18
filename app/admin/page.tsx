@@ -530,11 +530,11 @@ function CharacterPicker({
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4" onClick={onClose}>
       <div
-        className="max-h-[80dvh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-white/10 bg-[var(--surface)] p-4"
+        className="max-h-[80dvh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-white/10 bg-[var(--surface)] p-4 xl:max-w-4xl"
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="mb-3 text-sm font-bold text-white/70">캐릭터 선택 — 학교에 맞는 캐릭터를 고르세요</h3>
-        <div className="grid grid-cols-5 gap-2 sm:grid-cols-8">
+        <div className="grid grid-cols-5 gap-2 sm:grid-cols-8 xl:grid-cols-10">
           {keys.map((key) => {
             const owner = usedBy.get(key);
             return (
@@ -625,7 +625,7 @@ function TeamsTab({
                   onChange={(e) => edit(i, { school: e.target.value })}
                   placeholder="학교"
                   maxLength={40}
-                  className="w-44 rounded-lg border border-white/15 bg-black/30 px-3 py-2 pr-8 text-sm outline-none focus:border-[var(--orange)]"
+                  className="w-44 rounded-lg border border-white/15 bg-black/30 px-3 py-2 pr-8 text-sm outline-none focus:border-[var(--orange)] xl:w-64"
                 />
                 {logo && (
                   <span className="absolute right-2 top-1/2 h-5 w-5 -translate-y-1/2">
@@ -705,7 +705,7 @@ function SettingsTab({
   const btn = 'rounded-lg bg-[var(--orange)] px-4 py-2 text-sm font-bold text-white disabled:opacity-25';
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 xl:max-w-2xl">
       <div className={card}>
         <h2 className="mb-1 font-bold">심사위원 명단</h2>
         <p className="mb-3 text-xs text-white/45">
@@ -921,11 +921,11 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-4 pb-24 pt-6">
+    <main className="mx-auto w-full max-w-3xl px-4 pb-24 pt-6 xl:max-w-6xl xl:px-8">
       <header className="mb-6 flex items-center justify-between">
         <div>
           <p className="text-[11px] font-bold tracking-[0.2em] text-[var(--orange)]">ANIMAL LEAGUE</p>
-          <h1 className="text-xl font-extrabold">운영 콘솔</h1>
+          <h1 className="text-xl font-extrabold xl:text-2xl">운영 콘솔</h1>
         </div>
         <div className="flex items-center gap-3 text-xs text-white/40">
           <span>rev {state.rev}</span>
@@ -953,7 +953,7 @@ export default function AdminPage() {
         </div>
       )}
 
-      <nav className="mb-6 flex gap-1 rounded-xl bg-white/5 p-1">
+      <nav className="mb-6 flex gap-1 rounded-xl bg-white/5 p-1 xl:max-w-xl">
         {TABS.map((t) => (
           <button
             key={t.key}
