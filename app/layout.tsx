@@ -5,9 +5,12 @@ import "./globals.css";
 
 // 웹폰트는 전부 셀프호스트 — 행사장 네트워크가 불안해도 스크린 타이포가 유지돼야 한다.
 // next/font 는 빌드 시점에 폰트를 받아 같은 오리진에서 서빙하므로 런타임 CDN 의존이 없다.
-const suit = localFont({
-  src: "./fonts/SUIT-Variable.woff2",
-  variable: "--font-suit",
+//
+// 본문은 Pretendard (한글 UI 가독성·숫자 정렬), 디스플레이는 Anton (영문 워드마크 전용).
+// SUIT 는 사용 중단 — 파일은 남겨두되 로드하지 않는다 (되돌릴 일 대비).
+const pretendard = localFont({
+  src: "./fonts/PretendardVariable.woff2",
+  variable: "--font-pretendard",
   display: "swap",
 });
 
@@ -29,7 +32,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className={`${suit.variable} ${anton.variable} h-full antialiased`}>
+    <html lang="ko" className={`${pretendard.variable} ${anton.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
