@@ -79,8 +79,11 @@
 
 - `app/admin/page.tsx` → **운영** — **완료** (PIN 입장 · 경기 진행/팀 관리/설정 탭,
   실시간 집계 4초 폴링 + 동표 경고, 캐릭터 픽커, 확인 다이얼로그, 상태별 스크린샷 9장)
-- `app/judge/page.tsx` → **심사**
+- `app/judge/page.tsx` → **심사** — **완료** (코드 → 명단 이름 선택 입장, sessionStorage 복원,
+  라운드별 로컬 타이머, 대형 탭 카드, R2 영상 대체, 대리 입력, done 시 폼 자동 초기화)
 - `app/page.tsx` → **스크린** (현재 임시 인덱스 페이지를 대체. 디자인 공을 제일 많이)
+- 공용 조각은 `components/ui.tsx` (TrackBadge · CharacterArt · TRACK_COLORS).
+  admin 은 자기 사본을 갖고 있음 — 스크린 화면 후 리팩터 PR 로 통합 예정
 
 트랙 컬러 잠정값이 `globals.css` 에 토큰으로 들어감 (`--track-*`). 확정 시 여기만 바꾸면 됨.
 
