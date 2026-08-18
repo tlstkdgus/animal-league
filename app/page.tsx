@@ -80,9 +80,11 @@ function TeamRow({
         sizes={lg ? '64px' : '56px'}
       />
       <div className="min-w-0 flex-1">
-        {/* 팀명은 자르지 않는다 — 2줄까지 단어 단위 줄바꿈 (자른 팀명은 무대에서 틀린 이름이다) */}
+        {/* 팀명은 자르지 않는다 — 2줄 줄바꿈 + 길이 조건 스케일.
+            짧은 이름은 프로젝터 가독성 우선으로 크게, 11자 이상(최대 20자)은 한 단계
+            줄여서 2줄 안에 온전히 들어가게 한다. 자른 팀명은 무대에서 틀린 이름이다. */}
         <div
-          className={`line-clamp-2 font-extrabold leading-tight tracking-tight ${lg ? 'text-[26px]' : 'text-[22px]'}`}
+          className={`line-clamp-2 font-extrabold leading-tight tracking-tight ${nameSize(teamName(state, index), lg)}`}
         >
           {teamName(state, index)}
         </div>
@@ -97,6 +99,12 @@ function TeamRow({
       )}
     </div>
   );
+}
+
+/** 팀명 길이 조건 글자 크기 — 20자(서버 상한 40자, 실운영 최대 20자 기준)가 2줄에 들어가는 값. */
+function nameSize(name: string, lg: boolean): string {
+  if (lg) return name.length > 10 ? 'text-xl' : 'text-[26px]';
+  return name.length > 10 ? 'text-[17px]' : 'text-[22px]';
 }
 
 function VsDivider() {
