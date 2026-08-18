@@ -8,7 +8,7 @@
 // React 가 컴포넌트를 새로 마운트하게 한다 (§8 폼 초기화를 상태 정리 코드 없이 보장).
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { CharacterArt, TrackBadge } from '@/components/ui';
+import { CharacterArt, SchoolTag } from '@/components/ui';
 import type { Match, Team, Side, Round } from '@/lib/tournament';
 
 // ------------------------------------------------------------
@@ -284,10 +284,11 @@ function JudgeForm({
           />
           <div className="min-w-0 flex-1 md:text-center">
             <div className="mb-0.5 text-[11px] font-bold text-white/40 md:text-xs">{side}</div>
-            <div className="truncate text-lg font-extrabold md:text-2xl">{team?.team || `팀 ${(index ?? 0) + 1}`}</div>
-            <div className="mt-1 flex items-center gap-2 text-xs text-white/50 md:justify-center md:text-sm">
-              <span className="truncate">{team?.school || '학교 미입력'}</span>
-              {team && <TrackBadge track={team.track} />}
+            <div className="line-clamp-2 text-lg font-extrabold leading-tight md:text-2xl">
+              {team?.team || `팀 ${(index ?? 0) + 1}`}
+            </div>
+            <div className="mt-1.5 flex md:justify-center">
+              {team && <SchoolTag school={team.school || '학교 미입력'} track={team.track} size="sm" />}
             </div>
           </div>
         </div>
