@@ -173,13 +173,13 @@ function Timer({ round }: { round: Round }) {
   const finished = remaining === 0;
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-(--surface) p-4">
+    <div className="rounded-2xl border border-white/10 bg-(--surface) p-4 md:mx-auto md:w-full md:max-w-2xl md:p-5">
       <div className="mb-2 flex gap-1.5">
         {presets.map((p) => (
           <button
             key={p.label}
             onClick={() => pick(p)}
-            className="flex-1 rounded-lg py-1.5 text-xs font-bold transition-colors"
+            className="flex-1 rounded-lg py-1.5 text-xs font-bold transition-colors md:py-2 md:text-sm"
             style={
               preset.label === p.label
                 ? { background: 'var(--orange)', color: '#fff' }
@@ -192,7 +192,7 @@ function Timer({ round }: { round: Round }) {
       </div>
       <div className="flex items-center justify-between">
         <span
-          className={`font-mono text-4xl font-extrabold tabular-nums ${finished ? 'animate-pulse' : ''}`}
+          className={`font-mono text-4xl font-extrabold tabular-nums md:text-5xl ${finished ? 'animate-pulse' : ''}`}
           style={{ color: warning || finished ? 'var(--live)' : undefined }}
         >
           {mm}:{ss}
@@ -249,6 +249,8 @@ function JudgeForm({
   const submitAs = proxyMode && proxyName ? proxyName : identity.name;
   const isRound2 = match.round === 2;
 
+  // 모바일: 가로형 행 카드 (스크롤 최소화) / md 이상: 세로형 대형 카드 — 태블릿·노트북에서
+  // 좁은 띠로 보이던 것을 캐릭터 아트 중심의 큰 카드 두 장이 좌우로 서게 바꿨다.
   const sideCard = (side: Side) => {
     const index = side === 'A' ? match.a : match.b;
     const team = index !== null ? teams[index] : null;
@@ -257,32 +259,36 @@ function JudgeForm({
       <button
         key={side}
         onClick={() => setWinner(side)}
-        className="relative w-full overflow-hidden rounded-2xl border-2 p-4 text-left transition-all"
+        className="relative w-full overflow-hidden rounded-2xl border-2 p-4 text-left transition-all md:p-6"
         style={{
           borderColor: selected ? 'var(--orange)' : 'rgba(255,255,255,0.1)',
           background: selected ? 'var(--orange-glow)' : 'var(--surface)',
           boxShadow: selected ? '0 0 24px rgba(255,96,0,0.25)' : 'none',
         }}
       >
-        <div className="flex items-center gap-4">
-          <CharacterArt characterKey={team?.character ?? null} className="aspect-2/3 w-16" sizes="64px" />
-          <div className="min-w-0 flex-1">
-            <div className="mb-0.5 text-[11px] font-bold text-white/40">{side}</div>
-            <div className="truncate text-lg font-extrabold">{team?.team || `팀 ${(index ?? 0) + 1}`}</div>
-            <div className="mt-1 flex items-center gap-2 text-xs text-white/50">
+        <div
+          className="absolute right-3 top-3 z-10 grid h-7 w-7 place-items-center rounded-full border-2 text-sm font-bold md:h-9 md:w-9 md:text-base"
+          style={
+            selected
+              ? { borderColor: 'var(--orange)', background: 'var(--orange)', color: '#fff' }
+              : { borderColor: 'rgba(255,255,255,0.25)', color: 'transparent', background: 'rgba(0,0,0,0.35)' }
+          }
+        >
+          ✓
+        </div>
+        <div className="flex items-center gap-4 md:flex-col md:items-stretch md:gap-4">
+          <CharacterArt
+            characterKey={team?.character ?? null}
+            className="aspect-2/3 w-16 shrink-0 md:mx-auto md:w-full md:max-w-56"
+            sizes="(min-width: 768px) 224px, 64px"
+          />
+          <div className="min-w-0 flex-1 md:text-center">
+            <div className="mb-0.5 text-[11px] font-bold text-white/40 md:text-xs">{side}</div>
+            <div className="truncate text-lg font-extrabold md:text-2xl">{team?.team || `팀 ${(index ?? 0) + 1}`}</div>
+            <div className="mt-1 flex items-center gap-2 text-xs text-white/50 md:justify-center md:text-sm">
               <span className="truncate">{team?.school || '학교 미입력'}</span>
               {team && <TrackBadge track={team.track} />}
             </div>
-          </div>
-          <div
-            className="grid h-7 w-7 shrink-0 place-items-center rounded-full border-2 text-sm font-bold"
-            style={
-              selected
-                ? { borderColor: 'var(--orange)', background: 'var(--orange)', color: '#fff' }
-                : { borderColor: 'rgba(255,255,255,0.2)', color: 'transparent' }
-            }
-          >
-            ✓
           </div>
         </div>
       </button>
@@ -336,13 +342,16 @@ function JudgeForm({
 
       <Timer round={match.round} />
 
-      <p className="text-center text-sm font-bold text-white/70">진출할 팀을 선택하세요</p>
-      <div className="space-y-3">
+      <p className="text-center text-sm font-bold text-white/70 md:text-base">진출할 팀을 선택하세요</p>
+      <div className="space-y-3 md:grid md:grid-cols-[1fr_auto_1fr] md:items-stretch md:gap-5 md:space-y-0">
         {sideCard('A')}
-        <div className="text-center text-xs font-extrabold text-white/25">VS</div>
+        <div className="text-center text-xs font-extrabold text-white/25 md:grid md:place-items-center md:text-xl">
+          VS
+        </div>
         {sideCard('B')}
       </div>
 
+      <div className="space-y-4 md:mx-auto md:w-full md:max-w-2xl">
       {isRound2 && (
         <div className="rounded-xl border border-white/10 bg-(--surface) p-3 text-sm">
           <p className="mb-2 text-xs leading-relaxed text-white/50">
@@ -403,6 +412,7 @@ function JudgeForm({
       >
         {busy ? '제출 중…' : `${submitAs} 명의로 제출`}
       </button>
+      </div>
     </div>
   );
 }
@@ -523,11 +533,11 @@ export default function JudgePage() {
   const live = state?.matches.find((m) => m.status === 'live') ?? null;
 
   return (
-    <main className="mx-auto w-full max-w-md px-4 pb-16 pt-5">
-      <header className="mb-5 flex items-center justify-between">
+    <main className="mx-auto w-full max-w-md px-4 pb-16 pt-5 md:max-w-4xl md:px-8 md:pt-8">
+      <header className="mb-5 flex items-center justify-between md:mb-8">
         <div>
-          <p className="text-[10px] font-bold tracking-[0.2em] text-(--orange)">ANIMAL LEAGUE</p>
-          <h1 className="text-lg font-extrabold">심사</h1>
+          <p className="text-[10px] font-bold tracking-[0.2em] text-(--orange) md:text-xs">ANIMAL LEAGUE</p>
+          <h1 className="text-lg font-extrabold md:text-2xl">심사</h1>
         </div>
         <div className="flex items-center gap-2 text-xs text-white/45">
           <b className="text-white/70">{identity.name}</b>
