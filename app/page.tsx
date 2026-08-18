@@ -187,7 +187,9 @@ function Connector({ mirrored, drawn }: { mirrored?: boolean; drawn: boolean }) 
     : { top: 'borderTopRightRadius', bottom: 'borderBottomRightRadius' };
 
   return (
-    <div className="relative w-5 shrink-0 self-stretch 2xl:w-8" aria-hidden>
+    // 연결선 폭이 곧 R1↔R2 사이 여백이다 — 디자이너 피드백(8/18): 결선 칸을 줄여
+    // 이 영역을 확보. 카드가 다닥다닥 붙어 보이던 원인이 여기의 w-5 였다
+    <div className="relative w-12 shrink-0 self-stretch 2xl:w-20" aria-hidden>
       <div
         className="absolute left-0 right-0"
         style={{
@@ -215,7 +217,7 @@ function Connector({ mirrored, drawn }: { mirrored?: boolean; drawn: boolean }) 
 /** 준결승 → 결승 한 줄 연결선. */
 function FinalConnector({ drawn }: { drawn: boolean }) {
   return (
-    <div className="relative w-5 shrink-0 self-stretch 2xl:w-8" aria-hidden>
+    <div className="relative w-8 shrink-0 self-stretch 2xl:w-12" aria-hidden>
       <div
         className="absolute left-0 right-0 top-1/2"
         style={{
@@ -598,7 +600,8 @@ export default function ViewerPage() {
         <div className="flex w-full items-stretch gap-0">
           <BracketSide state={state} semi={semi1} fallback={['R1-1', 'R1-2']} revealingId={revealingId} />
           <FinalConnector drawn={final.a !== null} />
-          <div className="grid min-w-0 flex-[2.2] content-center gap-3 px-1 2xl:flex-[2.6]">
+          {/* 결선 칸은 팀 2줄이 들어갈 최소 폭이면 된다 — 넓을수록 R1↔R2 여백을 잡아먹는다 */}
+          <div className="grid min-w-0 flex-[1.7] content-center gap-3 px-1 2xl:flex-[1.9]">
             <p className="font-display text-center text-xl text-white/35">FINAL</p>
             <div className="rounded-2xl border border-(--orange)/25 p-1.5">
               <MatchCard
