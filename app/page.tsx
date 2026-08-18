@@ -342,6 +342,9 @@ function FocusLive({ state, match }: { state: PublicState; match: Match }) {
 function RevealSequence({ state, match }: { state: PublicState; match: Match }) {
   const votes = match.votes ?? [];
   const [showWinner, setShowWinner] = useState(votes.length === 0);
+  // 오픈된 칩 수. 시계는 칩의 chipOpen 애니메이션이 끝나는 이벤트 하나다 —
+  // JS 타이머로 CSS 타이밍을 수치 복제하면 두 시계가 되어 어긋난 전례가 있다 (PR #24)
+  const [opened, setOpened] = useState(0);
 
   useEffect(() => {
     if (votes.length === 0) return;
@@ -349,7 +352,17 @@ function RevealSequence({ state, match }: { state: PublicState; match: Match }) 
     return () => clearTimeout(timer);
   }, [votes.length]);
 
+  // 모션 축소 환경은 칩이 애니메이션 없이 즉시 다 보이고 animationend 도 오지 않는다
+  // — 집계도 즉시 전체 표시 (이벤트만 믿으면 0 에 영원히 머문다).
+  // 타이머로 미루는 건 react-hooks/set-state-in-effect (effect 본문 직접 setState 금지)
+  useEffect(() => {
+    if (votes.length === 0 || !window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const timer = setTimeout(() => setOpened(votes.length), 0);
+    return () => clearTimeout(timer);
+  }, [votes.length]);
+
   const tally = (side: 'A' | 'B') => votes.filter((v) => v === side).length;
+  const openTally = (side: 'A' | 'B') => votes.slice(0, opened).filter((v) => v === side).length;
   const chipCharacter = (side: 'A' | 'B') => teamAt(state, side === 'A' ? match.a : match.b)?.character ?? null;
 
   return (
@@ -363,9 +376,9 @@ function RevealSequence({ state, match }: { state: PublicState; match: Match }) 
         <div className="flex flex-col items-center gap-2">
           {votes.length > 0 && (
             <div className="flex items-center gap-5 font-mono text-5xl font-extrabold tabular-nums lg:text-6xl">
-              <span style={{ color: SIDE_COLORS.A }}>{showWinner ? tally('A') : <LiveTally votes={votes} side="A" />}</span>
+              <span style={{ color: SIDE_COLORS.A }}>{showWinner ? tally('A') : openTally('A')}</span>
               <span className="text-2xl text-white/25">:</span>
-              <span style={{ color: SIDE_COLORS.B }}>{showWinner ? tally('B') : <LiveTally votes={votes} side="B" />}</span>
+              <span style={{ color: SIDE_COLORS.B }}>{showWinner ? tally('B') : openTally('B')}</span>
             </div>
           )}
           {!showWinner && votes.length === 0 && <span className="font-display text-6xl text-white/85">VS</span>}
@@ -380,6 +393,7 @@ function RevealSequence({ state, match }: { state: PublicState; match: Match }) 
             <div
               key={i}
               className="vote-chip relative aspect-2/3 w-16 overflow-hidden rounded-lg border-2 bg-white/5 lg:w-20"
+              onAnimationEnd={() => setOpened((n) => Math.max(n, i + 1))}
               style={{
                 animationDelay: `${(i * CHIP_INTERVAL_MS) / 1000}s`,
                 borderColor: SIDE_COLORS[side],
@@ -399,22 +413,6 @@ function RevealSequence({ state, match }: { state: PublicState; match: Match }) 
       )}
     </div>
   );
-}
-
-/**
- * 오픈된 칩 수를 따라 올라가는 카운터 — 각 칩의 플립이 끝나는 순간 반영.
- * setInterval 은 첫 틱이 한 주기 뒤라 첫 칩(딜레이 0)보다 항상 한 박자 늦었다 —
- * 칩별 setTimeout 으로 i×간격+550ms(CSS chipOpen 길이)에 맞춘다.
- */
-function LiveTally({ votes, side }: { votes: ('A' | 'B')[]; side: 'A' | 'B' }) {
-  const [opened, setOpened] = useState(0);
-  useEffect(() => {
-    const timers = votes.map((_, i) =>
-      setTimeout(() => setOpened(i + 1), i * CHIP_INTERVAL_MS + 550),
-    );
-    return () => timers.forEach(clearTimeout);
-  }, [votes]);
-  return <>{votes.slice(0, opened).filter((v) => v === side).length}</>;
 }
 
 // ------------------------------------------------------------
