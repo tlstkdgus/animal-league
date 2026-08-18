@@ -169,9 +169,24 @@ test('결과 공개하면 done + 승자 기록', () => {
 });
 
 test('심사 제출이 0건이어도 공개된다 — 백업 모드 (SPEC §5)', () => {
-  // 이 모듈은 표를 아예 보지 않는다. 시작 → 공개만으로 끝나는 것 자체가 보장선.
+  // 이 모듈은 표를 판정에 쓰지 않는다. 시작 → 공개만으로 끝나는 것 자체가 보장선.
   const s = play(seeded(), 'R1-1', 'A');
   assert.equal(getMatch(s, 'R1-1').status, 'done');
+  assert.deepEqual(getMatch(s, 'R1-1').votes, []); // 표 없음 → 스크린은 연출 생략
+});
+
+test('공개 시 익명 표가 함께 저장된다 (스크린 투표 오픈 연출, §6.1)', () => {
+  const s = revealResult(startMatch(seeded(), 'R1-1'), 'R1-1', 'A', ['A', 'B', 'A', 'A', 'B']);
+  const m = getMatch(s, 'R1-1');
+
+  assert.deepEqual(m.votes, ['A', 'B', 'A', 'A', 'B']);
+  // 공개 전 경기는 votes 가 비어 있어야 한다 — 진행 중 유출 방지
+  assert.equal(getMatch(s, 'R1-2').votes, null);
+});
+
+test('초기화하면 저장된 표도 사라진다', () => {
+  const s = revealResult(startMatch(seeded(), 'R1-1'), 'R1-1', 'A', ['A', 'A', 'B']);
+  assert.ok(reset(s).matches.every((m) => m.votes === null));
 });
 
 test('시작하지 않은 경기는 공개할 수 없다', () => {

@@ -15,11 +15,10 @@ export const TRACK_COLORS: Record<Track, string> = {
 };
 
 export function TrackBadge({ track }: { track: Track }) {
+  // 알약 배지 대신 도트 + 텍스트 — 배지가 화면마다 반복되면 스티커처럼 보인다
   return (
-    <span
-      className="rounded-full px-2 py-0.5 text-[11px] font-bold tracking-wide"
-      style={{ background: `color-mix(in srgb, ${TRACK_COLORS[track]} 22%, transparent)`, color: TRACK_COLORS[track] }}
-    >
+    <span className="inline-flex shrink-0 items-center gap-1.5 text-[11px] font-bold tracking-[0.08em]" style={{ color: TRACK_COLORS[track] }}>
+      <span className="h-1.5 w-1.5 rounded-full" style={{ background: TRACK_COLORS[track] }} aria-hidden />
       {track}
     </span>
   );

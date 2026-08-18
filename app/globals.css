@@ -23,7 +23,7 @@
 @theme inline {
   --color-background: var(--bg);
   --color-foreground: var(--text);
-  --font-sans: var(--font-suit);
+  --font-sans: var(--font-pretendard);
   --font-display: var(--font-anton);
 }
 
@@ -32,6 +32,6 @@
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font-suit), Arial, Helvetica, sans-serif;
+  font-family: var(--font-pretendard), "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   min-height: 100dvh;
 }

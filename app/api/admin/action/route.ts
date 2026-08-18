@@ -6,10 +6,12 @@
 
 import { ensureState, mutate, deleteAllVotes, type StateRow } from '@/lib/state';
 import { isAdminSession, setAdminCookie } from '@/lib/auth';
+import { votesForMatch } from '@/lib/votes';
 import {
   startMatch,
   revealResult,
   drawRound2,
+  shuffle,
   setFinal,
   updateTeam,
   setJudgeCode,
@@ -103,7 +105,11 @@ export async function POST(request: Request): Promise<Response> {
             return fail(400, 'BAD_WINNER', '승자는 A 또는 B 여야 합니다.');
           }
           const winner = body.winner;
-          return ok({ state: adminView(await mutate((s) => revealResult(s, matchId, winner))) });
+          // 스크린 투표 오픈 연출용 익명 표 — 명의를 떼고 순서를 셔플해 공개 상태에 싣는다.
+          // 제출 순서(ts)가 남으면 운영 화면을 본 사람이 명의를 역추적할 수 있어 순서도 지운다 (§3).
+          const rows = await votesForMatch(matchId);
+          const anonVotes = shuffle(rows.map((r) => r.winner));
+          return ok({ state: adminView(await mutate((s) => revealResult(s, matchId, winner, anonVotes))) });
         }
 
         case 'drawRound2':

@@ -81,9 +81,12 @@
   실시간 집계 4초 폴링 + 동표 경고, 캐릭터 픽커, 확인 다이얼로그, 상태별 스크린샷 9장)
 - `app/judge/page.tsx` → **심사** — **완료** (코드 → 명단 이름 선택 입장, sessionStorage 복원,
   라운드별 로컬 타이머, 대형 탭 카드, R2 영상 대체, 대리 입력, done 시 폼 자동 초기화)
-- `app/page.tsx` → **스크린** (현재 임시 인덱스 페이지를 대체. 디자인 공을 제일 많이)
+- `app/page.tsx` → **스크린** — **완료** (좌우 수렴형 대진표, 추첨 전 점선/후 실선 동적 연결,
+  LIVE 배너, 결과 공개 연출 3초, 우승 테이크오버, 모바일 세로 스택, reduced-motion 존중)
 - 공용 조각은 `components/ui.tsx` (TrackBadge · CharacterArt · TRACK_COLORS).
-  admin 은 자기 사본을 갖고 있음 — 스크린 화면 후 리팩터 PR 로 통합 예정
+  admin 은 자기 사본을 갖고 있음 — 리팩터 PR 로 통합 예정
+- ⚠️ 폴링 클라이언트는 반드시 `fetch(..., { cache: 'no-store' })` — /api/state 의
+  SWR 캐시 헤더를 브라우저도 존중해 낡은 스냅샷을 물고 늘어진 전례가 있음 (viewer·judge 수정됨)
 
 트랙 컬러 잠정값이 `globals.css` 에 토큰으로 들어감 (`--track-*`). 확정 시 여기만 바꾸면 됨.
 

@@ -13,12 +13,19 @@ export type StateRow = { data: TournamentState; rev: number };
 const TABLE = 'tournament_state';
 const MAX_RETRIES = 3;
 
-/** 필드가 추가되기 전에 저장된 문서 보정. judges 는 명단제(2026-08-17) 이전 행에 없다. */
+/**
+ * 필드가 추가되기 전에 저장된 문서 보정.
+ * judges 는 명단제(8/17), matches[].votes 는 투표 오픈 연출(8/18) 이전 행에 없다.
+ */
 function migrate(row: StateRow): StateRow {
-  if (!Array.isArray(row.data.judges)) {
-    return { ...row, data: { ...row.data, judges: [] } };
+  let data = row.data;
+  if (!Array.isArray(data.judges)) {
+    data = { ...data, judges: [] };
   }
-  return row;
+  if (data.matches.some((m) => m.votes === undefined)) {
+    data = { ...data, matches: data.matches.map((m) => ({ ...m, votes: m.votes ?? null })) };
+  }
+  return data === row.data ? row : { ...row, data };
 }
 
 /** 현재 상태를 읽는다. 행이 없으면 (최초 접근) 초기 브래킷으로 만들고 그 값을 돌려준다. */

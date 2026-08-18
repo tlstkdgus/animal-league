@@ -40,6 +40,12 @@ export type Match = {
   b: number | null;
   status: MatchStatus;
   winner: Side | null;
+  /**
+   * 결과 공개 시점의 익명 표 (스크린 투표 오픈 연출용, §6.1).
+   * 명의는 싣지 않고 서버가 순서를 셔플해 저장한다 — §3 표 비공개 원칙 유지.
+   * 공개 전(ready/live)에는 null.
+   */
+  votes: Side[] | null;
 };
 
 /**
@@ -105,13 +111,13 @@ export function createInitialState(overrides?: Partial<TournamentState>): Tourna
   return {
     teams: Array.from({ length: TEAM_COUNT }, () => ({ ...EMPTY_TEAM })),
     matches: [
-      { id: 'R1-1', round: 1, a: 0, b: 1, status: 'ready', winner: null },
-      { id: 'R1-2', round: 1, a: 2, b: 3, status: 'ready', winner: null },
-      { id: 'R1-3', round: 1, a: 4, b: 5, status: 'ready', winner: null },
-      { id: 'R1-4', round: 1, a: 6, b: 7, status: 'ready', winner: null },
-      { id: 'R2-1', round: 2, a: null, b: null, status: 'ready', winner: null },
-      { id: 'R2-2', round: 2, a: null, b: null, status: 'ready', winner: null },
-      { id: 'F', round: 3, a: null, b: null, status: 'ready', winner: null },
+      { id: 'R1-1', round: 1, a: 0, b: 1, status: 'ready', winner: null, votes: null },
+      { id: 'R1-2', round: 1, a: 2, b: 3, status: 'ready', winner: null, votes: null },
+      { id: 'R1-3', round: 1, a: 4, b: 5, status: 'ready', winner: null, votes: null },
+      { id: 'R1-4', round: 1, a: 6, b: 7, status: 'ready', winner: null, votes: null },
+      { id: 'R2-1', round: 2, a: null, b: null, status: 'ready', winner: null, votes: null },
+      { id: 'R2-2', round: 2, a: null, b: null, status: 'ready', winner: null, votes: null },
+      { id: 'F', round: 3, a: null, b: null, status: 'ready', winner: null, votes: null },
     ],
     judges: [],
     judgeCode: 'ANIMAL',
@@ -248,9 +254,17 @@ export function startMatch(state: TournamentState, matchId: string): TournamentS
  *
  * 심사 제출이 0건이어도 통과시킨다 — 현장 네트워크가 죽어도 운영자 입력만으로
  * 브래킷이 굴러가야 하는 백업 모드가 최소 보장선이다 (SPEC §5).
- * 그래서 표 집계는 여기서 보지 않는다. 동표 경고도 운영 화면의 몫이다 (SPEC §3).
+ * 그래서 표 집계를 판정에 쓰지 않는다. 동표 경고도 운영 화면의 몫이다 (SPEC §3).
+ *
+ * votes 는 스크린 투표 오픈 연출용 익명 표 — 호출측(서버)이 명의를 떼고 셔플해
+ * 넘긴다. 빈 배열(백업 모드)이면 스크린은 표 연출 없이 승자만 발표한다.
  */
-export function revealResult(state: TournamentState, matchId: string, winner: Side): TournamentState {
+export function revealResult(
+  state: TournamentState,
+  matchId: string,
+  winner: Side,
+  votes: Side[] = [],
+): TournamentState {
   const target = getMatch(state, matchId);
 
   if (target.status === 'done') {
@@ -260,7 +274,7 @@ export function revealResult(state: TournamentState, matchId: string, winner: Si
     throw new TournamentError('NOT_LIVE', `${target.id} 을 먼저 시작해야 결과를 공개할 수 있습니다.`);
   }
 
-  return replaceMatch(state, target.id, { status: 'done', winner });
+  return replaceMatch(state, target.id, { status: 'done', winner, votes: [...votes] });
 }
 
 /**
