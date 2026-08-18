@@ -401,13 +401,19 @@ function RevealSequence({ state, match }: { state: PublicState; match: Match }) 
   );
 }
 
-/** 오픈된 칩 수를 따라 올라가는 카운터 — 칩 오픈 타이밍(1초 간격)과 동기화. */
+/**
+ * 오픈된 칩 수를 따라 올라가는 카운터 — 각 칩의 플립이 끝나는 순간 반영.
+ * setInterval 은 첫 틱이 한 주기 뒤라 첫 칩(딜레이 0)보다 항상 한 박자 늦었다 —
+ * 칩별 setTimeout 으로 i×간격+550ms(CSS chipOpen 길이)에 맞춘다.
+ */
 function LiveTally({ votes, side }: { votes: ('A' | 'B')[]; side: 'A' | 'B' }) {
   const [opened, setOpened] = useState(0);
   useEffect(() => {
-    const timer = setInterval(() => setOpened((n) => Math.min(n + 1, votes.length)), CHIP_INTERVAL_MS);
-    return () => clearInterval(timer);
-  }, [votes.length]);
+    const timers = votes.map((_, i) =>
+      setTimeout(() => setOpened(i + 1), i * CHIP_INTERVAL_MS + 550),
+    );
+    return () => timers.forEach(clearTimeout);
+  }, [votes]);
   return <>{votes.slice(0, opened).filter((v) => v === side).length}</>;
 }
 
