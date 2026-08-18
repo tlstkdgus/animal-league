@@ -12,6 +12,7 @@
 // prefers-reduced-motion 이면 정지 상태로 표시만 한다.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { CharacterArt, TrackBadge } from '@/components/ui';
 import { winningTeamId, type Match, type Team } from '@/lib/tournament';
 
@@ -251,6 +252,9 @@ function BracketSide({
 
 const SIDE_COLORS: Record<'A' | 'B', string> = { A: 'var(--orange)', B: '#4FA8F6' };
 
+/** 투표 칩 오픈 간격 — 칩 애니메이션·카운터·시퀀스 전체 길이가 이 값 하나를 공유한다. */
+const CHIP_INTERVAL_MS = 1600;
+
 function TeamHero({
   state,
   index,
@@ -322,11 +326,12 @@ function RevealSequence({ state, match }: { state: PublicState; match: Match }) 
 
   useEffect(() => {
     if (votes.length === 0) return;
-    const timer = setTimeout(() => setShowWinner(true), votes.length * 1000 + 800);
+    const timer = setTimeout(() => setShowWinner(true), votes.length * CHIP_INTERVAL_MS + 800);
     return () => clearTimeout(timer);
   }, [votes.length]);
 
   const tally = (side: 'A' | 'B') => votes.filter((v) => v === side).length;
+  const chipCharacter = (side: 'A' | 'B') => teamAt(state, side === 'A' ? match.a : match.b)?.character ?? null;
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-8 py-6 lg:gap-10">
@@ -350,19 +355,25 @@ function RevealSequence({ state, match }: { state: PublicState; match: Match }) 
       </div>
 
       {votes.length > 0 && (
-        <div className="flex flex-wrap items-end justify-center gap-3">
+        <div className="flex flex-wrap items-end justify-center gap-3.5">
+          {/* 표받은 팀의 캐릭터 카드가 열린다 — A/B 글자는 어느 팀인지 한 번 더 생각하게 만든다 */}
           {votes.map((side, i) => (
             <div
               key={i}
-              className="vote-chip grid h-20 w-14 place-items-center rounded-lg border-2 text-2xl font-extrabold lg:h-24 lg:w-16"
+              className="vote-chip relative aspect-2/3 w-16 overflow-hidden rounded-lg border-2 bg-white/5 lg:w-20"
               style={{
-                animationDelay: `${i * 1}s`,
+                animationDelay: `${(i * CHIP_INTERVAL_MS) / 1000}s`,
                 borderColor: SIDE_COLORS[side],
-                background: `color-mix(in srgb, ${SIDE_COLORS[side]} 16%, transparent)`,
-                color: SIDE_COLORS[side],
+                boxShadow: `0 0 18px color-mix(in srgb, ${SIDE_COLORS[side]} 35%, transparent)`,
               }}
             >
-              {side}
+              {chipCharacter(side) ? (
+                <Image src={`/characters/${chipCharacter(side)}.png`} alt="" fill sizes="80px" className="object-cover" />
+              ) : (
+                <span className="grid h-full w-full place-items-center text-xl font-extrabold" style={{ color: SIDE_COLORS[side] }}>
+                  {side}
+                </span>
+              )}
             </div>
           ))}
         </div>
@@ -375,7 +386,7 @@ function RevealSequence({ state, match }: { state: PublicState; match: Match }) 
 function LiveTally({ votes, side }: { votes: ('A' | 'B')[]; side: 'A' | 'B' }) {
   const [opened, setOpened] = useState(0);
   useEffect(() => {
-    const timer = setInterval(() => setOpened((n) => Math.min(n + 1, votes.length)), 1000);
+    const timer = setInterval(() => setOpened((n) => Math.min(n + 1, votes.length)), CHIP_INTERVAL_MS);
     return () => clearInterval(timer);
   }, [votes.length]);
   return <>{votes.slice(0, opened).filter((v) => v === side).length}</>;
@@ -446,9 +457,9 @@ export default function ViewerPage() {
       const justDone = next.matches.find((m) => m.status === 'done' && prev[m.id] && prev[m.id] !== 'done');
       prevStatusRef.current = Object.fromEntries(next.matches.map((m) => [m.id, m.status]));
       if (justDone) {
-        // 시퀀스 길이 = 표 오픈(1초/장) + 카운트 여운 + 승자 발표 홀드
+        // 시퀀스 길이 = 표 오픈(CHIP_INTERVAL_MS/장) + 카운트 여운 + 승자 발표 홀드
         const voteCount = justDone.votes?.length ?? 0;
-        const total = (voteCount > 0 ? voteCount * 1000 + 800 : 0) + 4200;
+        const total = (voteCount > 0 ? voteCount * CHIP_INTERVAL_MS + 800 : 0) + 4200;
         setSequence(justDone);
         setTimeout(() => setSequence(null), total);
         // 시퀀스가 끝나고 브래킷으로 돌아왔을 때 해당 카드에 잔광
