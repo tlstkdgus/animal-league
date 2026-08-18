@@ -9,6 +9,15 @@
   --text-sub: rgba(255,255,255,0.45);
   --orange: #FF6000;
   --orange-glow: rgba(255,96,0,0.18);
+
+  /* 트랙 컬러 4종 — 캐릭터 카드 에셋의 배색에서 뽑은 잠정값 (HANDOFF 미결: 확정 시 교체) */
+  --track-sjf: #FF6000;      /* 오렌지 (브랜드) */
+  --track-aac: #38B6F1;      /* 블루 */
+  --track-likelion: #8B7CF6; /* 퍼플 */
+  --track-open: #F468B0;     /* 핑크 */
+
+  --live: #ff3b30;
+  --done: #34c759;
 }
 
 @theme inline {
