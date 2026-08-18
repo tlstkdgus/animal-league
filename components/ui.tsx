@@ -5,6 +5,7 @@
 // 리팩터는 별도 PR 로 미룸 — CONTRIBUTING "PR 단위").
 
 import Image from 'next/image';
+import universityLogos from '@/lib/universityLogos';
 import type { Track } from '@/lib/tournament';
 
 export const TRACK_COLORS: Record<Track, string> = {
@@ -20,6 +21,40 @@ export function TrackBadge({ track }: { track: Track }) {
     <span className="inline-flex shrink-0 items-center gap-1.5 text-[11px] font-bold tracking-[0.08em]" style={{ color: TRACK_COLORS[track] }}>
       <span className="h-1.5 w-1.5 rounded-full" style={{ background: TRACK_COLORS[track] }} aria-hidden />
       {track}
+    </span>
+  );
+}
+
+/**
+ * 학교 로고 + 학교명 + 트랙 도트 — 학교가 이 대회 정체성의 절반이라 묻히면 안 된다.
+ * 로고는 어두운 배경에서 뭉개지지 않게 흰 원형 칩에 담는다. 글씨가 좁아 잘려도
+ * 로고가 학교를 말해준다. 로고 매핑이 없는 학교는 이름만 표시.
+ */
+export function SchoolTag({
+  school,
+  track,
+  size = 'md',
+}: {
+  school: string;
+  track?: Track;
+  size?: 'sm' | 'md' | 'lg';
+}) {
+  const logo = universityLogos[school];
+  const logoPx = size === 'lg' ? 24 : size === 'md' ? 19 : 16;
+  const textCls = size === 'lg' ? 'text-base lg:text-lg' : size === 'md' ? 'text-sm' : 'text-[13px]';
+
+  return (
+    <span className={`inline-flex min-w-0 items-center gap-1.5 text-white/65 ${textCls}`}>
+      {logo && (
+        <span
+          className="relative shrink-0 overflow-hidden rounded-full bg-white/95"
+          style={{ width: logoPx, height: logoPx }}
+        >
+          <Image src={logo} alt="" fill sizes={`${logoPx}px`} className="object-contain p-px" />
+        </span>
+      )}
+      <span className="truncate break-keep">{school}</span>
+      {track && <TrackBadge track={track} />}
     </span>
   );
 }

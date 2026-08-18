@@ -13,7 +13,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { CharacterArt, TrackBadge } from '@/components/ui';
+import { CharacterArt, SchoolTag } from '@/components/ui';
 import { winningTeamId, type Match, type Team } from '@/lib/tournament';
 
 type PublicState = { teams: Team[]; matches: Match[]; rev: number };
@@ -80,12 +80,18 @@ function TeamRow({
         sizes={lg ? '64px' : '56px'}
       />
       <div className="min-w-0 flex-1">
-        <div className={`truncate font-extrabold leading-tight tracking-tight ${lg ? 'text-[26px]' : 'text-[22px]'}`}>
+        {/* 팀명은 자르지 않는다 — 2줄 줄바꿈 + 길이 조건 스케일.
+            짧은 이름은 프로젝터 가독성 우선으로 크게, 11자 이상(최대 20자)은 한 단계
+            줄여서 2줄 안에 온전히 들어가게 한다. 자른 팀명은 무대에서 틀린 이름이다. */}
+        <div
+          className={`line-clamp-2 font-extrabold leading-tight tracking-tight ${nameSize(teamName(state, index), lg)}`}
+        >
           {teamName(state, index)}
         </div>
-        <div className={`mt-0.5 flex items-center gap-2.5 text-white/45 ${lg ? 'text-sm' : 'text-[13px]'}`}>
-          <span className="truncate">{team?.school || (index === null ? '' : '학교 미입력')}</span>
-          {team && index !== null && <TrackBadge track={team.track} />}
+        <div className="mt-1">
+          {team && index !== null ? (
+            <SchoolTag school={team.school || '학교 미입력'} track={team.track} size={lg ? 'md' : 'sm'} />
+          ) : null}
         </div>
       </div>
       {isWinner && (
@@ -93,6 +99,12 @@ function TeamRow({
       )}
     </div>
   );
+}
+
+/** 팀명 길이 조건 글자 크기 — 20자(서버 상한 40자, 실운영 최대 20자 기준)가 2줄에 들어가는 값. */
+function nameSize(name: string, lg: boolean): string {
+  if (lg) return name.length > 10 ? 'text-xl' : 'text-[26px]';
+  return name.length > 10 ? 'text-[17px]' : 'text-[22px]';
 }
 
 function VsDivider() {
@@ -278,12 +290,14 @@ function TeamHero({
         className={`aspect-2/3 ${compact ? 'w-36 lg:w-44' : 'w-44 lg:w-60'} ${winner ? 'shadow-[0_0_70px_rgba(255,96,0,0.4)]' : ''}`}
         sizes="(min-width: 1024px) 240px, 176px"
       />
-      <p className={`mt-5 font-extrabold leading-tight tracking-tight ${compact ? 'text-2xl lg:text-3xl' : 'text-3xl lg:text-5xl'}`}>
+      <p
+        className={`mt-5 max-w-full font-extrabold leading-tight tracking-tight ${compact ? 'text-2xl lg:text-3xl' : 'text-3xl lg:text-5xl'}`}
+        style={{ textWrap: 'balance' }}
+      >
         {teamName(state, index)}
       </p>
-      <div className="mt-2 flex items-center gap-2.5 text-sm text-white/50 lg:text-base">
-        <span>{team?.school}</span>
-        {team && index !== null && <TrackBadge track={team.track} />}
+      <div className="mt-2.5">
+        {team && index !== null && <SchoolTag school={team.school} track={team.track} size="lg" />}
       </div>
       {winner && (
         <span className="champion-rise mt-4 rounded-lg bg-(--orange) px-4 py-1.5 text-lg font-extrabold text-white">
@@ -415,15 +429,14 @@ function ChampionTakeover({ state, final }: { state: PublicState; final: Match }
             sizes="(min-width: 768px) 288px, 192px"
           />
         </div>
-        <h2 className="champion-rise mt-8 text-4xl font-extrabold tracking-tight md:text-6xl" style={{ animationDelay: '0.5s' }}>
+        <h2
+          className="champion-rise mt-8 max-w-full text-4xl font-extrabold tracking-tight md:text-6xl"
+          style={{ animationDelay: '0.5s', textWrap: 'balance' }}
+        >
           {teamName(state, index)}
         </h2>
-        <div
-          className="champion-rise mt-3 flex items-center gap-3 text-lg text-white/60 md:text-2xl"
-          style={{ animationDelay: '0.65s' }}
-        >
-          <span>{team?.school}</span>
-          {team && <TrackBadge track={team.track} />}
+        <div className="champion-rise mt-4" style={{ animationDelay: '0.65s' }}>
+          {team && <SchoolTag school={team.school} track={team.track} size="lg" />}
         </div>
       </div>
     </div>
