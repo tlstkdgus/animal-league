@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import universityLogos from '@/lib/universityLogos';
+import { characterKeyForSchool, characterName } from '@/lib/characterMap';
 import type { Match, Team, Track, Side } from '@/lib/tournament';
 import { TRACKS } from '@/lib/tournament';
 
@@ -537,13 +538,14 @@ function CharacterPicker({
         <div className="grid grid-cols-5 gap-2 sm:grid-cols-8 xl:grid-cols-10">
           {keys.map((key) => {
             const owner = usedBy.get(key);
+            const name = characterName(key) ?? key;
             return (
               <button
                 key={key}
                 onClick={() => onPick(key)}
                 className="relative aspect-[2/3] overflow-hidden rounded-lg border transition-transform hover:scale-105"
                 style={{ borderColor: key === current ? 'var(--orange)' : 'rgba(255,255,255,0.1)' }}
-                title={owner !== undefined ? `팀 ${owner + 1} 사용 중` : key}
+                title={owner !== undefined ? `${name} — 팀 ${owner + 1} 사용 중` : name}
               >
                 <Image src={`/characters/${key}.png`} alt={key} fill sizes="90px" className="object-cover" />
                 {owner !== undefined && (
@@ -622,7 +624,12 @@ function TeamsTab({
                 <input
                   list="schools"
                   value={t.school}
-                  onChange={(e) => edit(i, { school: e.target.value })}
+                  onChange={(e) => {
+                    // 학교가 배정 목록과 일치하면 캐릭터 자동 배정 (수동으로 다시 고르는 것도 가능)
+                    const school = e.target.value;
+                    const mapped = characterKeyForSchool(school);
+                    edit(i, mapped ? { school, character: mapped } : { school });
+                  }}
                   placeholder="학교"
                   maxLength={40}
                   className="w-44 rounded-lg border border-white/15 bg-black/30 px-3 py-2 pr-8 text-sm outline-none focus:border-[var(--orange)] xl:w-64"
