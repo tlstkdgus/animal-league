@@ -73,7 +73,7 @@ const TRACK_COLORS: Record<Track, string> = {
 function TrackBadge({ track }: { track: Track }) {
   return (
     <span
-      className="rounded-full px-2 py-0.5 text-[11px] font-bold tracking-wide"
+      className="rounded-full px-2 py-0.5 text-[11px] font-bold"
       style={{ background: `color-mix(in srgb, ${TRACK_COLORS[track]} 22%, transparent)`, color: TRACK_COLORS[track] }}
     >
       {track}
@@ -176,7 +176,7 @@ function PinGate({ onSuccess }: { onSuccess: () => void }) {
   return (
     <main className="grid min-h-dvh place-items-center p-6">
       <form onSubmit={submit} className="w-full max-w-xs text-center">
-        <p className="mb-1 text-xs font-bold tracking-[0.2em] text-[var(--orange)]">ANIMAL LEAGUE</p>
+        <p className="mb-1 text-xs font-bold text-[var(--orange)]">ANIMAL LEAGUE</p>
         <h1 className="mb-8 text-2xl font-extrabold">운영 콘솔</h1>
         <input
           autoFocus
@@ -444,7 +444,7 @@ function MatchesTab({
 
   const section = (title: string, extra?: React.ReactNode) => (
     <div className="mb-3 mt-7 flex items-center justify-between first:mt-0">
-      <h2 className="text-sm font-extrabold tracking-widest text-white/50">{title}</h2>
+      <h2 className="text-sm font-extrabold text-white/50">{title}</h2>
       {extra}
     </div>
   );
@@ -931,7 +931,7 @@ export default function AdminPage() {
     <main className="mx-auto w-full max-w-3xl px-4 pb-24 pt-6 xl:max-w-6xl xl:px-8">
       <header className="mb-6 flex items-center justify-between">
         <div>
-          <p className="text-[11px] font-bold tracking-[0.2em] text-[var(--orange)]">ANIMAL LEAGUE</p>
+          <p className="text-[11px] font-bold text-[var(--orange)]">ANIMAL LEAGUE</p>
           <h1 className="text-xl font-extrabold xl:text-2xl">운영 콘솔</h1>
         </div>
         <div className="flex items-center gap-3 text-xs text-white/40">
