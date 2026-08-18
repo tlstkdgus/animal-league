@@ -477,7 +477,8 @@ export default function JudgePage() {
   // 공개 상태 3초 폴링. 실패하면 마지막 정상 스냅샷 유지 (명세 §7)
   const poll = useCallback(async () => {
     try {
-      const res = await api<PublicState>('/api/state');
+      // no-store: SWR 캐시 헤더를 브라우저가 존중해 낡은 스냅샷을 받는 것 방지 (viewer 와 동일)
+      const res = await api<PublicState>('/api/state', { cache: 'no-store' });
       if (res.rev < revRef.current) return; // 낡은 스냅샷 무시 (§4.1)
       revRef.current = res.rev;
       setState({ teams: res.teams, matches: res.matches, rev: res.rev });
