@@ -34,17 +34,23 @@ export function SchoolTag({
   school,
   track,
   size = 'md',
+  trackFrom2xl = false,
 }: {
   school: string;
   track?: Track;
   size?: 'sm' | 'md' | 'lg';
+  /** 브래킷 컴팩트 티어(xl)용 — 트랙 배지가 축소 불가라 좁은 카드에서 튀어나온다. 2xl 부터만 표시 */
+  trackFrom2xl?: boolean;
 }) {
   const logo = universityLogos[school];
   const logoPx = size === 'lg' ? 24 : size === 'md' ? 19 : 16;
   const textCls = size === 'lg' ? 'text-base lg:text-lg' : size === 'md' ? 'text-sm' : 'text-[13px]';
 
   return (
-    <span className={`inline-flex min-w-0 items-center gap-1.5 text-white/65 ${textCls}`}>
+    // flex + max-w-full: inline-flex 는 부모보다 넓어질 수 있어 좁은 카드에서 밖으로 튀어나온다.
+    // 학교명 span 의 min-w-0 이 핵심 — flex item 의 min-width:auto 기본값 때문에
+    // 이게 없으면 truncate 가 무시되고 전체 폭이 내용만큼 벌어진다.
+    <span className={`flex min-w-0 max-w-full items-center gap-1.5 text-white/65 ${textCls}`}>
       {logo && (
         <span
           className="relative shrink-0 overflow-hidden rounded-full bg-white/95"
@@ -53,8 +59,12 @@ export function SchoolTag({
           <Image src={logo} alt="" fill sizes={`${logoPx}px`} className="object-contain p-px" />
         </span>
       )}
-      <span className="truncate break-keep">{school}</span>
-      {track && <TrackBadge track={track} />}
+      <span className="min-w-0 truncate break-keep">{school}</span>
+      {track && (
+        <span className={trackFrom2xl ? 'hidden 2xl:inline-flex' : 'inline-flex'}>
+          <TrackBadge track={track} />
+        </span>
+      )}
     </span>
   );
 }

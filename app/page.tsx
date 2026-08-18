@@ -70,13 +70,15 @@ function TeamRow({
   const lg = size === 'lg';
 
   return (
+    // xl(1280~1535)은 컴팩트 밀도 — 카드 최소 폭이 열 폭을 넘으면 이웃 카드 위로 배어 나온다.
+    // 2xl 부터 프로젝터용 크기로 확장.
     <div
-      className={`flex items-center gap-3.5 rounded-lg px-3 transition-colors ${lg ? 'py-3' : 'py-2.5'} ${isLoser ? 'opacity-30' : ''}`}
+      className={`flex items-center gap-2.5 rounded-lg px-2 transition-colors 2xl:gap-3.5 2xl:px-3 ${lg ? 'py-2.5 2xl:py-3' : 'py-2 2xl:py-2.5'} ${isLoser ? 'opacity-30' : ''}`}
       style={isWinner ? { background: 'var(--orange-glow)' } : undefined}
     >
       <CharacterArt
         characterKey={team?.character ?? null}
-        className={lg ? 'aspect-2/3 w-16' : 'aspect-2/3 w-14'}
+        className={lg ? 'aspect-2/3 w-11 2xl:w-16' : 'aspect-2/3 w-10 2xl:w-14'}
         sizes={lg ? '64px' : '56px'}
       />
       <div className="min-w-0 flex-1">
@@ -90,7 +92,7 @@ function TeamRow({
         </div>
         <div className="mt-1">
           {team && index !== null ? (
-            <SchoolTag school={team.school || '학교 미입력'} track={team.track} size={lg ? 'md' : 'sm'} />
+            <SchoolTag school={team.school || '학교 미입력'} track={team.track} size={lg ? 'md' : 'sm'} trackFrom2xl />
           ) : null}
         </div>
       </div>
@@ -101,10 +103,13 @@ function TeamRow({
   );
 }
 
-/** 팀명 길이 조건 글자 크기 — 20자(서버 상한 40자, 실운영 최대 20자 기준)가 2줄에 들어가는 값. */
+/**
+ * 팀명 길이 조건 글자 크기 — 20자(실운영 최대)가 2줄에 들어가는 값.
+ * xl 은 컴팩트, 2xl 부터 프로젝터 크기.
+ */
 function nameSize(name: string, lg: boolean): string {
-  if (lg) return name.length > 10 ? 'text-xl' : 'text-[26px]';
-  return name.length > 10 ? 'text-[17px]' : 'text-[22px]';
+  if (lg) return name.length > 10 ? 'text-base 2xl:text-xl' : 'text-xl 2xl:text-[26px]';
+  return name.length > 10 ? 'text-sm 2xl:text-[17px]' : 'text-lg 2xl:text-[22px]';
 }
 
 function VsDivider() {
@@ -182,7 +187,7 @@ function Connector({ mirrored, drawn }: { mirrored?: boolean; drawn: boolean }) 
     : { top: 'borderTopRightRadius', bottom: 'borderBottomRightRadius' };
 
   return (
-    <div className="relative w-8 shrink-0 self-stretch" aria-hidden>
+    <div className="relative w-5 shrink-0 self-stretch 2xl:w-8" aria-hidden>
       <div
         className="absolute left-0 right-0"
         style={{
@@ -210,7 +215,7 @@ function Connector({ mirrored, drawn }: { mirrored?: boolean; drawn: boolean }) 
 /** 준결승 → 결승 한 줄 연결선. */
 function FinalConnector({ drawn }: { drawn: boolean }) {
   return (
-    <div className="relative w-8 shrink-0 self-stretch" aria-hidden>
+    <div className="relative w-5 shrink-0 self-stretch 2xl:w-8" aria-hidden>
       <div
         className="absolute left-0 right-0 top-1/2"
         style={{
@@ -582,12 +587,13 @@ export default function ViewerPage() {
         <FocusLive state={state} match={live} />
       ) : (
         <>
-      {/* 대진표 — lg 이상: 좌우 수렴형 (실캡처 비교 후 채택) */}
-      <div className="hidden flex-1 items-center py-2 lg:flex">
+      {/* 대진표 — xl(1280px) 이상만 좌우 수렴형. 1024~1279 는 5열이 물리적으로 좁아
+          내용이 카드 밖으로 밀린다 (실사용 노트북 제보로 lg → xl 상향) */}
+      <div className="hidden flex-1 items-center py-2 xl:flex">
         <div className="flex w-full items-stretch gap-0">
           <BracketSide state={state} semi={semi1} fallback={['R1-1', 'R1-2']} revealingId={revealingId} />
           <FinalConnector drawn={final.a !== null} />
-          <div className="grid min-w-0 flex-[2.6] content-center gap-3 px-1">
+          <div className="grid min-w-0 flex-[2.2] content-center gap-3 px-1 2xl:flex-[2.6]">
             <p className="font-display text-center text-xl tracking-[0.4em] text-white/35">FINAL</p>
             <div className="rounded-2xl border border-(--orange)/25 p-1.5">
               <MatchCard
@@ -604,8 +610,8 @@ export default function ViewerPage() {
         </div>
       </div>
 
-      {/* 모바일 — 세로 스택 */}
-      <div className="mx-auto w-full max-w-md space-y-7 pt-4 lg:hidden">
+      {/* 세로 스택 — xl 미만 (폰 + 좁은 노트북/태블릿) */}
+      <div className="mx-auto w-full max-w-md space-y-7 pt-4 xl:hidden">
         {[
           { label: 'ROUND 1', matches: state.matches.filter((m) => m.round === 1), undrawn: undefined },
           { label: 'ROUND 2', matches: [semi1, semi2], undrawn: '추첨 대기' },
