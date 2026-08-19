@@ -313,6 +313,8 @@ function VotesPanel({
         })}
       </div>
 
+      <ProxyEntry match={match} state={state} onSubmitted={load} />
+
       {votes && votes.length > 0 && (
         <ul className="space-y-1.5">
           {votes.map((v) => (
@@ -329,6 +331,118 @@ function VotesPanel({
         </ul>
       )}
     </div>
+  );
+}
+
+/**
+ * 간사 대리 입력 — 집계 패널 안에서 심사위원 명의로 표를 대신 제출한다.
+ * 심사 화면(/judge)의 대리 모드와 같은 서버 가드(proxyVote: 명단제·live·덮어쓰기)를 쓰되,
+ * 운영자가 콘솔을 떠나 심사 페이지로 재입장하지 않게 하는 것이 목적 (8/19 운영 동선 결정).
+ * 심사 카드 전체를 복제하지 않는다 — 팀·집계는 바로 위 패널에 이미 보인다.
+ */
+function ProxyEntry({
+  match,
+  state,
+  onSubmitted,
+}: {
+  match: Match;
+  state: AdminState;
+  onSubmitted: () => void;
+}) {
+  const [name, setName] = useState('');
+  const [winner, setWinner] = useState<Side | null>(null);
+  const [comment, setComment] = useState('');
+  const [videoA, setVideoA] = useState(false);
+  const [videoB, setVideoB] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [saved, setSaved] = useState('');
+
+  const teamLabelOf = (side: Side) => {
+    const index = side === 'A' ? match.a : match.b;
+    return `${side} · ${teamLabel(state.teams[index ?? -1] ?? null, index)}`;
+  };
+
+  const submit = async () => {
+    if (!name || !winner || busy) return;
+    setBusy(true);
+    setError('');
+    try {
+      await action({ action: 'proxyVote', matchId: match.id, name, winner, comment, videoA, videoB });
+      setSaved(`${name} 명의로 저장됨 — 공개 전까지 다시 제출하면 덮어씁니다.`);
+      setWinner(null);
+      setComment('');
+      onSubmitted(); // 집계·목록 즉시 갱신
+    } catch (err) {
+      setSaved('');
+      setError(err instanceof Error ? err.message : '저장에 실패했습니다.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <details className="mb-3 rounded-lg border border-white/10">
+      <summary className="cursor-pointer px-3 py-2 text-xs font-bold text-white/50 hover:bg-white/5">
+        간사 대리 입력 — 심사위원 대신 제출
+      </summary>
+      <div className="space-y-2 px-3 pb-3 pt-1">
+        <div className="flex gap-2">
+          <select
+            value={name}
+            onChange={(e) => { setName(e.target.value); setSaved(''); }}
+            className="flex-1 rounded-lg border border-white/15 bg-black/30 px-2 py-2 text-xs outline-none"
+          >
+            <option value="">제출 명의 선택…</option>
+            {state.judges.map((judge) => (
+              <option key={judge} value={judge}>{judge}</option>
+            ))}
+          </select>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {(['A', 'B'] as const).map((side) => (
+            <button
+              key={side}
+              onClick={() => setWinner(side)}
+              className="truncate rounded-lg border px-2 py-2 text-xs font-bold"
+              style={
+                winner === side
+                  ? { borderColor: 'var(--orange)', background: 'var(--orange-glow)' }
+                  : { borderColor: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.6)' }
+              }
+            >
+              {teamLabelOf(side)}
+            </button>
+          ))}
+        </div>
+        <input
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          placeholder="코멘트 (선택)"
+          maxLength={500}
+          className="w-full rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-xs outline-none"
+        />
+        {match.round === 2 && (
+          <div className="flex gap-4 text-xs text-white/60">
+            <label className="flex items-center gap-1.5">
+              <input type="checkbox" checked={videoA} onChange={(e) => setVideoA(e.target.checked)} />A 영상 대체
+            </label>
+            <label className="flex items-center gap-1.5">
+              <input type="checkbox" checked={videoB} onChange={(e) => setVideoB(e.target.checked)} />B 영상 대체
+            </label>
+          </div>
+        )}
+        {error && <p className="text-xs text-[var(--live)]">{error}</p>}
+        {saved && !error && <p className="text-xs text-[var(--done)]">✓ {saved}</p>}
+        <button
+          disabled={!name || !winner || busy}
+          onClick={submit}
+          className="w-full rounded-lg bg-[var(--orange)] py-2 text-xs font-bold text-white disabled:opacity-25"
+        >
+          {busy ? '저장 중…' : name ? `${name} 명의로 제출` : '명의를 선택하세요'}
+        </button>
+      </div>
+    </details>
   );
 }
 
