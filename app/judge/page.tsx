@@ -9,13 +9,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CharacterArt, SchoolTag } from '@/components/ui';
-import type { Match, Team, Side, Round } from '@/lib/tournament';
+import type { Match, Team, Side, TimerState } from '@/lib/tournament';
 
 // ------------------------------------------------------------
 // 타입 · API
 // ------------------------------------------------------------
 
-type PublicState = { teams: Team[]; matches: Match[]; rev: number };
+type PublicState = { teams: Team[]; matches: Match[]; timer: TimerState | null; rev: number };
 type Identity = { code: string; name: string };
 
 const STORAGE_KEY = 'al-judge';
@@ -123,50 +123,22 @@ function EntryGate({ notice, onEnter }: { notice: string; onEnter: (identity: Id
 }
 
 // ------------------------------------------------------------
-// 라운드 타이머 — 클라이언트 로컬 (기기 간 동기화 불필요, §6.2)
+// 라운드 타이머 — 표시 전용 (§6.2 개정 8/19: 운영 구동 서버 동기)
+//
+// 경기 시작·단계 전환은 운영 콘솔이 하고, 심사위원은 아무것도 누르지 않는다.
+// 서버는 시작 시각만 내려주고 남은 시간은 이 기기 시계로 계산한다 —
+// 폴링 3초 지연이 있어도 남은 시간 자체는 어긋나지 않는다.
 // ------------------------------------------------------------
 
-const TIMER_PRESETS: Record<Round, { label: string; seconds: number }[]> = {
-  1: [
-    { label: '발표', seconds: 5 * 60 },
-    { label: '공통 Q&A', seconds: 8 * 60 },
-  ],
-  2: [
-    { label: '시연', seconds: 3 * 60 },
-    { label: '기술 Q&A', seconds: 5 * 60 },
-  ],
-  3: [
-    { label: '라스트 어필', seconds: 100 },
-    { label: '심사 합의', seconds: 100 },
-  ],
-};
-
-function Timer({ round }: { round: Round }) {
-  const presets = TIMER_PRESETS[round];
-  const [preset, setPreset] = useState(presets[0]);
-  const [remaining, setRemaining] = useState(presets[0].seconds);
-  const [running, setRunning] = useState(false);
+function TimerDisplay({ timer }: { timer: TimerState }) {
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
-    if (!running) return;
-    const timer = setInterval(() => {
-      setRemaining((prev) => {
-        if (prev <= 1) {
-          setRunning(false);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [running]);
+    const tick = setInterval(() => setNowMs(Date.now()), 500);
+    return () => clearInterval(tick);
+  }, []);
 
-  const pick = (p: (typeof presets)[number]) => {
-    setPreset(p);
-    setRemaining(p.seconds);
-    setRunning(false);
-  };
-
+  const remaining = Math.max(0, timer.seconds - Math.floor((nowMs - timer.startedAt) / 1000));
   const mm = String(Math.floor(remaining / 60)).padStart(2, '0');
   const ss = String(remaining % 60).padStart(2, '0');
   const warning = remaining <= 30 && remaining > 0;
@@ -174,46 +146,16 @@ function Timer({ round }: { round: Round }) {
 
   return (
     <div className="rounded-2xl border border-white/10 bg-(--surface) p-4 md:mx-auto md:w-full md:max-w-2xl md:p-5">
-      <div className="mb-2 flex gap-1.5">
-        {presets.map((p) => (
-          <button
-            key={p.label}
-            onClick={() => pick(p)}
-            className="flex-1 rounded-lg py-1.5 text-xs font-bold transition-colors md:py-2 md:text-sm"
-            style={
-              preset.label === p.label
-                ? { background: 'var(--orange)', color: '#fff' }
-                : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)' }
-            }
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
       <div className="flex items-center justify-between">
+        <span className="rounded-lg bg-(--orange) px-3 py-1.5 text-sm font-bold text-white md:text-base">
+          {timer.label}
+        </span>
         <span
           className={`font-mono text-4xl font-extrabold tabular-nums md:text-5xl ${finished ? 'animate-pulse' : ''}`}
           style={{ color: warning || finished ? 'var(--live)' : undefined }}
         >
           {mm}:{ss}
         </span>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setRunning((r) => !r && remaining > 0)}
-            className="grid h-11 w-11 place-items-center rounded-full bg-(--orange) text-lg text-white disabled:opacity-30"
-            disabled={remaining === 0}
-            aria-label={running ? '일시정지' : '시작'}
-          >
-            {running ? '⏸' : '▶'}
-          </button>
-          <button
-            onClick={() => pick(preset)}
-            className="grid h-11 w-11 place-items-center rounded-full bg-white/8 text-lg text-white/70"
-            aria-label="초기화"
-          >
-            ↺
-          </button>
-        </div>
       </div>
     </div>
   );
@@ -226,12 +168,14 @@ function Timer({ round }: { round: Round }) {
 function JudgeForm({
   match,
   teams,
+  timer,
   identity,
   roster,
   onAuthLost,
 }: {
   match: Match;
   teams: Team[];
+  timer: TimerState | null;
   identity: Identity;
   roster: string[];
   onAuthLost: (notice: string) => void;
@@ -341,7 +285,7 @@ function JudgeForm({
         </span>
       </div>
 
-      <Timer round={match.round} />
+      {timer && timer.matchId === match.id && <TimerDisplay timer={timer} />}
 
       <p className="text-center text-sm font-bold text-white/70 md:text-base">진출할 팀을 선택하세요</p>
       <div className="space-y-3 md:grid md:grid-cols-[1fr_auto_1fr] md:items-stretch md:gap-5 md:space-y-0">
@@ -492,7 +436,7 @@ export default function JudgePage() {
       const res = await api<PublicState>('/api/state', { cache: 'no-store' });
       if (res.rev < revRef.current) return; // 낡은 스냅샷 무시 (§4.1)
       revRef.current = res.rev;
-      setState({ teams: res.teams, matches: res.matches, rev: res.rev });
+      setState({ teams: res.teams, matches: res.matches, timer: res.timer ?? null, rev: res.rev });
     } catch {
       /* 유지 */
     }
@@ -558,6 +502,7 @@ export default function JudgePage() {
           key={live.id} // 경기가 바뀌면 폼 전체 초기화 (§8)
           match={live}
           teams={state.teams}
+          timer={state.timer}
           identity={identity}
           roster={roster}
           onAuthLost={authLost}

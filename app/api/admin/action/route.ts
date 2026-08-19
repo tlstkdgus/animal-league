@@ -9,6 +9,7 @@ import { isAdminSession, setAdminCookie } from '@/lib/auth';
 import { votesForMatch, upsertVote } from '@/lib/votes';
 import {
   startMatch,
+  setTimer,
   revealResult,
   drawRound2,
   shuffle,
@@ -40,6 +41,7 @@ function adminView(row: StateRow) {
     matches,
     judges,
     judgeCode,
+    timer: row.data.timer ?? null,
     rev: row.rev,
     trackWarnings: trackWarnings(row.data),
   };
@@ -113,6 +115,12 @@ export async function POST(request: Request): Promise<Response> {
           const rows = await votesForMatch(matchId);
           const anonVotes = shuffle(rows.map((r) => r.winner));
           return ok({ state: adminView(await mutate((s) => revealResult(s, matchId, winner, anonVotes))) });
+        }
+
+        case 'setTimer': {
+          // 타이머 단계 전환/재시작 (§6.2 개정 8/19) — live 경기의 라운드 프리셋만 허용
+          const label = asString(body.label, 'label', 20);
+          return ok({ state: adminView(await mutate((s) => setTimer(s, label))) });
         }
 
         case 'drawRound2':
