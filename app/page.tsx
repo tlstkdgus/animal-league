@@ -336,24 +336,65 @@ function TeamHero({
   );
 }
 
-/** live 경기 포커스 — 대진표 대신 해당 대결을 크게 (§6.1). */
+/**
+ * live 경기 포커스 — 대진표 대신 해당 대결을 크게 (§6.1).
+ *
+ * 배경 연출(8/19 결정 — 시안 2 구도 + 시안 1 강도): 화면을 대각으로 갈라
+ * 좌 A(오렌지)/우 B(블루) 진영 톤 + 카드 뒤 스포트라이트 + 중앙 빔.
+ * 등장 시 페이드인·빔 스윕 1회, 이후 글로우만 숨쉰다 (우승 연출과 같은 4초 리듬).
+ * 배경은 fixed 레이어(z-0)라 헤더·본문·푸터에 relative z-10 이 필요하다 (ViewerPage).
+ */
 function FocusLive({ state, match }: { state: PublicState; match: Match }) {
   return (
-    <div data-view="focus" className="grid flex-1 place-items-center py-6">
-      <div className="grid w-full max-w-6xl grid-cols-1 items-center gap-8 lg:grid-cols-[1fr_auto_1fr] lg:gap-12">
-        <TeamHero state={state} index={match.a} />
-        <div className="flex flex-col items-center gap-3">
-          <span className="live-pulse rounded bg-(--live) px-3 py-1 text-sm font-extrabold text-white">
-            LIVE
-          </span>
-          <span className="font-display text-6xl text-white/85 lg:text-8xl">VS</span>
-          <span className="font-mono text-xs font-bold text-white/35">
-            {match.id} · {match.round === 3 ? 'FINAL' : `ROUND ${match.round}`}
-          </span>
-        </div>
-        <TeamHero state={state} index={match.b} />
+    <>
+      <div className="vs-backdrop fixed inset-0 z-0" aria-hidden>
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `linear-gradient(105deg, rgba(255,96,0,0.13) 0%, rgba(255,96,0,0.05) 34%, transparent 49%,
+              transparent 51%, rgba(79,168,246,0.05) 66%, rgba(79,168,246,0.12) 100%)`,
+          }}
+        />
+        <div
+          className="vs-glow absolute rounded-full"
+          style={{
+            left: '8%', top: '16%', width: '42vw', height: '42vw',
+            background: 'radial-gradient(circle, rgba(255,96,0,0.13) 0%, transparent 62%)',
+          }}
+        />
+        <div
+          className="vs-glow absolute rounded-full"
+          style={{
+            right: '8%', top: '16%', width: '42vw', height: '42vw',
+            background: 'radial-gradient(circle, rgba(79,168,246,0.12) 0%, transparent 62%)',
+            animationDelay: '2s', // 좌우가 같은 박자로 숨쉬면 기계적으로 보인다
+          }}
+        />
+        <div
+          className="vs-beam absolute left-1/2 top-1/2"
+          style={{
+            width: 3, height: '140vh', transform: 'translate(-50%,-50%) rotate(15deg)',
+            background: `linear-gradient(180deg, transparent, rgba(255,255,255,0.13) 30%,
+              rgba(255,255,255,0.22) 50%, rgba(255,255,255,0.13) 70%, transparent)`,
+          }}
+        />
       </div>
-    </div>
+      <div data-view="focus" className="relative z-10 grid flex-1 place-items-center py-6">
+        <div className="grid w-full max-w-6xl grid-cols-1 items-center gap-8 lg:grid-cols-[1fr_auto_1fr] lg:gap-12">
+          <TeamHero state={state} index={match.a} />
+          <div className="flex flex-col items-center gap-3">
+            <span className="live-pulse rounded bg-(--live) px-3 py-1 text-sm font-extrabold text-white">
+              LIVE
+            </span>
+            <span className="font-display text-6xl text-white/85 lg:text-8xl">VS</span>
+            <span className="font-mono text-xs font-bold text-white/35">
+              {match.id} · {match.round === 3 ? 'FINAL' : `ROUND ${match.round}`}
+            </span>
+          </div>
+          <TeamHero state={state} index={match.b} />
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -569,13 +610,27 @@ export default function ViewerPage() {
           from { opacity: 0; transform: translateY(34px) rotateY(90deg); }
           to { opacity: 1; transform: none; }
         }
+        .vs-backdrop { pointer-events: none; animation: backdropIn 0.9s ease-out both; }
+        @keyframes backdropIn { from { opacity: 0; } }
+        .vs-glow { animation: glowBreathe 4s ease-in-out infinite; }
+        .vs-beam {
+          animation: beamIn 1.1s cubic-bezier(0.2, 0.8, 0.2, 1) both,
+            beamShimmer 6s ease-in-out 1.1s infinite;
+        }
+        @keyframes beamIn {
+          from { opacity: 0; transform: translate(-50%, -150%) rotate(15deg); }
+          to { opacity: 1; transform: translate(-50%, -50%) rotate(15deg); }
+        }
+        @keyframes beamShimmer { 50% { opacity: 0.55; } }
         @media (prefers-reduced-motion: reduce) {
-          .live-pulse, .card-reveal, .champion-glow, .champion-rise, .champion-float, .vote-chip { animation: none; }
+          .live-pulse, .card-reveal, .champion-glow, .champion-rise, .champion-float, .vote-chip,
+          .vs-backdrop, .vs-glow, .vs-beam { animation: none; }
         }
       `}</style>
 
       {/* 헤더 — 좌: 대회 아이덴티티 / 우: 라이브 상태. 배너 행을 없애 브래킷에 세로를 넘긴다 */}
-      <header className="mb-2 flex flex-col gap-3 lg:mb-4 lg:flex-row lg:items-end lg:justify-between">
+      {/* relative z-10: 대결 배경 레이어(fixed z-0) 위에 확실히 올린다 */}
+      <header className="relative z-10 mb-2 flex flex-col gap-3 lg:mb-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-[10px] font-bold text-white/35 lg:text-[11px]">
             2026 LIKELION UNIV. 14TH HACKATHON
@@ -671,7 +726,7 @@ export default function ViewerPage() {
         </>
       )}
 
-      <footer className="mt-4 flex items-center justify-between text-[11px] text-white/22">
+      <footer className="relative z-10 mt-4 flex items-center justify-between text-[11px] text-white/22">
         <span>각 경기 종료 후 즉시 발표</span>
         <span>부스 투표 8/28(목) 23:59까지</span>
       </footer>
