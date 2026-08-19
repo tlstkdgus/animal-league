@@ -383,13 +383,14 @@ function FocusLive({ state, match }: { state: PublicState; match: Match }) {
         <div className="grid w-full max-w-6xl grid-cols-1 items-center gap-8 lg:grid-cols-[1fr_auto_1fr] lg:gap-12">
           <TeamHero state={state} index={match.a} />
           {/* LIVE 칩은 여기 안 둔다 — 헤더 라이브 박스와 중복이고, 포커스 화면 자체가
-              "지금 이 경기"라는 뜻이다. 그 자리는 라운드 표기가 가져간다 (8/19 피드백) */}
+              "지금 이 경기"라는 뜻이다. 그 자리는 라운드 표기가 가져간다 (8/19 피드백).
+              표기는 운영 코드(R1-2)를 풀어 쓴 "ROUND 1-2" — 라운드만 쓰면 1라운드
+              네 경기가 전부 같은 화면이 되고, 코드만 쓰면 관객이 못 읽는다 */}
           <div className="flex flex-col items-center gap-3">
             <span className="font-display text-3xl text-(--orange) lg:text-5xl">
-              {match.round === 3 ? 'FINAL' : `ROUND ${match.round}`}
+              {match.round === 3 ? 'FINAL' : `ROUND ${match.round}-${match.id.split('-')[1]}`}
             </span>
             <span className="font-display text-6xl text-white/85 lg:text-8xl">VS</span>
-            <span className="font-mono text-sm font-bold text-white/45">{match.id}</span>
           </div>
           <TeamHero state={state} index={match.b} />
         </div>
