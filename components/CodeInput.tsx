@@ -120,8 +120,8 @@ export default function CodeInput({ universityName, onSubmit, isLoading, error, 
           gap: 10px;
           padding: 8px 16px;
           border-radius: 99px;
-          border: 1px solid rgba(255,96,0,0.35);
-          background: linear-gradient(180deg, rgba(255,96,0,0) 30%, rgba(255,96,0,0.12) 100%);
+          border: 1px solid rgba(236,108,1,0.35);
+          background: linear-gradient(180deg, rgba(236,108,1,0) 30%, rgba(236,108,1,0.12) 100%);
         }
         .ci-boxes {
           display: flex;
@@ -138,7 +138,7 @@ export default function CodeInput({ universityName, onSubmit, isLoading, error, 
           background: linear-gradient(180deg, rgba(78,69,64,0.5) 0%, rgba(0,0,0,0.5) 100%);
           outline: none;
           letter-spacing: 0.03em;
-          caret-color: #FF6000;
+          caret-color: #ec6c01;
           transition: border-color 0.15s, box-shadow 0.15s;
         }
         .ci-text-pc { display: none; }
@@ -147,7 +147,7 @@ export default function CodeInput({ universityName, onSubmit, isLoading, error, 
           width: 100%;
           padding: 17px 10px;
           border-radius: 14px;
-          background: #FF6000;
+          background: #ec6c01;
           color: #fff;
           font-size: 16px;
           font-weight: 800;
@@ -164,8 +164,8 @@ export default function CodeInput({ universityName, onSubmit, isLoading, error, 
           40%, 80% { transform: translateX(7px); }
         }
         @keyframes ci-glow-anim {
-          0%, 100% { box-shadow: 0 0 12px 1px rgba(255,96,0,0.10); }
-          50%      { box-shadow: 0 0 20px 3px rgba(255,96,0,0.16); }
+          0%, 100% { box-shadow: 0 0 12px 1px rgba(236,108,1,0.10); }
+          50%      { box-shadow: 0 0 20px 3px rgba(236,108,1,0.16); }
         }
 
         /* ===== PC: 가운데 카드 패널 ===== */
@@ -261,9 +261,9 @@ export default function CodeInput({ universityName, onSubmit, isLoading, error, 
                   style={{
                     color: filled ? '#fff' : 'rgba(255,255,255,0.35)',
                     border: `1.5px solid ${
-                      active || filled ? 'rgba(255,96,0,0.9)' : 'rgba(255,255,255,0.28)'
+                      active || filled ? 'rgba(236,108,1,0.9)' : 'rgba(255,255,255,0.28)'
                     }`,
-                    boxShadow: active ? '0 0 0 3px rgba(255,96,0,0.18)' : 'none',
+                    boxShadow: active ? '0 0 0 3px rgba(236,108,1,0.18)' : 'none',
                   }}
                   autoComplete="off"
                   autoCapitalize="characters"
@@ -284,7 +284,7 @@ export default function CodeInput({ universityName, onSubmit, isLoading, error, 
             style={{
               cursor: isLoading || !isFilled ? 'not-allowed' : 'pointer',
               opacity: isLoading || !isFilled ? 0.45 : 1,
-              boxShadow: isLoading || !isFilled ? 'none' : '0 6px 18px rgba(255,96,0,0.18)',
+              boxShadow: isLoading || !isFilled ? 'none' : '0 6px 18px rgba(236,108,1,0.18)',
               animation: isFilled && !isLoading ? 'ci-glow-anim 2.4s ease-in-out infinite' : undefined,
             }}
           >

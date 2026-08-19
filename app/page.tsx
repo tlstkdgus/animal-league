@@ -145,13 +145,13 @@ function MatchCard({
         borderColor: live
           ? 'var(--live)'
           : match.status === 'done'
-            ? 'rgba(255,96,0,0.30)'
+            ? 'rgba(236,108,1,0.30)'
             : 'rgba(255,255,255,0.08)',
         background: 'linear-gradient(180deg, var(--surface2) 0%, var(--surface) 100%)',
       }}
     >
       <div className="flex items-center justify-between px-3 pb-0.5 pt-1.5">
-        <span className="font-mono text-[11px] font-bold text-white/30">{match.id}</span>
+        <span className="font-en text-[11px] font-bold text-white/30">{match.id}</span>
         {live && (
           <span className="live-pulse rounded bg-(--live) px-1.5 py-0.5 text-[10px] font-extrabold text-white">
             LIVE
@@ -186,7 +186,7 @@ function MatchCard({
  * R2 로 들어가는 연결이 없음)은 카드가 선에 붙어 한 덩어리로 읽히는 원인이었다.
  */
 function Connector({ mirrored, drawn }: { mirrored?: boolean; drawn: boolean }) {
-  const border = drawn ? 'rgba(255,96,0,0.55)' : 'rgba(255,255,255,0.14)';
+  const border = drawn ? 'rgba(236,108,1,0.55)' : 'rgba(255,255,255,0.14)';
   const style = drawn ? 'solid' : 'dashed';
   const sideBorder = mirrored ? 'borderLeft' : 'borderRight';
   const corner = mirrored
@@ -242,7 +242,7 @@ function FinalConnector({ drawn }: { drawn: boolean }) {
       <div
         className="absolute left-0 right-0 top-1/2"
         style={{
-          borderTop: `2px ${drawn ? 'solid' : 'dashed'} ${drawn ? 'rgba(255,96,0,0.55)' : 'rgba(255,255,255,0.14)'}`,
+          borderTop: `2px ${drawn ? 'solid' : 'dashed'} ${drawn ? 'rgba(236,108,1,0.55)' : 'rgba(255,255,255,0.14)'}`,
         }}
       />
     </div>
@@ -290,7 +290,7 @@ function BracketSide({
 // 대결 포커스 (live) · 투표 오픈 시퀀스 (공개 직후)
 // ------------------------------------------------------------
 
-const SIDE_COLORS: Record<'A' | 'B', string> = { A: 'var(--orange)', B: '#4FA8F6' };
+const SIDE_COLORS: Record<'A' | 'B', string> = { A: 'var(--orange)', B: '#009be4' };
 
 /** 투표 칩 오픈 간격 — 칩 애니메이션·카운터·시퀀스 전체 길이가 이 값 하나를 공유한다. */
 const CHIP_INTERVAL_MS = 1600;
@@ -315,7 +315,7 @@ function TeamHero({
     >
       <CharacterArt
         characterKey={team?.character ?? null}
-        className={`aspect-2/3 ${compact ? 'w-36 lg:w-44' : 'w-44 lg:w-60'} ${winner ? 'shadow-[0_0_70px_rgba(255,96,0,0.4)]' : ''}`}
+        className={`aspect-2/3 ${compact ? 'w-36 lg:w-44' : 'w-44 lg:w-60'} ${winner ? 'shadow-[0_0_70px_rgba(236,108,1,0.4)]' : ''}`}
         sizes="(min-width: 1024px) 240px, 176px"
       />
       <p
@@ -351,22 +351,22 @@ function FocusLive({ state, match }: { state: PublicState; match: Match }) {
         <div
           className="absolute inset-0"
           style={{
-            background: `linear-gradient(105deg, rgba(255,96,0,0.13) 0%, rgba(255,96,0,0.05) 34%, transparent 49%,
-              transparent 51%, rgba(79,168,246,0.05) 66%, rgba(79,168,246,0.12) 100%)`,
+            background: `linear-gradient(105deg, rgba(236,108,1,0.13) 0%, rgba(236,108,1,0.05) 34%, transparent 49%,
+              transparent 51%, rgba(0,155,228,0.05) 66%, rgba(0,155,228,0.12) 100%)`,
           }}
         />
         <div
           className="vs-glow absolute rounded-full"
           style={{
             left: '8%', top: '16%', width: '42vw', height: '42vw',
-            background: 'radial-gradient(circle, rgba(255,96,0,0.13) 0%, transparent 62%)',
+            background: 'radial-gradient(circle, rgba(236,108,1,0.13) 0%, transparent 62%)',
           }}
         />
         <div
           className="vs-glow absolute rounded-full"
           style={{
             right: '8%', top: '16%', width: '42vw', height: '42vw',
-            background: 'radial-gradient(circle, rgba(79,168,246,0.12) 0%, transparent 62%)',
+            background: 'radial-gradient(circle, rgba(0,155,228,0.12) 0%, transparent 62%)',
             animationDelay: '2s', // 좌우가 같은 박자로 숨쉬면 기계적으로 보인다
           }}
         />
@@ -440,7 +440,7 @@ function RevealSequence({ state, match }: { state: PublicState; match: Match }) 
         <TeamHero state={state} index={match.a} compact dimmed={showWinner && match.winner !== 'A'} winner={showWinner && match.winner === 'A'} />
         <div className="flex flex-col items-center gap-2">
           {votes.length > 0 && (
-            <div className="flex items-center gap-5 font-mono text-5xl font-extrabold tabular-nums lg:text-6xl">
+            <div className="font-en flex items-center gap-5 text-5xl font-extrabold tabular-nums lg:text-6xl">
               <span style={{ color: SIDE_COLORS.A }}>{showWinner ? tally('A') : openTally('A')}</span>
               <span className="text-2xl text-white/25">:</span>
               <span style={{ color: SIDE_COLORS.B }}>{showWinner ? tally('B') : openTally('B')}</span>
@@ -500,7 +500,7 @@ function ChampionTakeover({ state, final }: { state: PublicState; final: Match }
         <div className="champion-rise" style={{ animationDelay: '0.25s' }}>
           <CharacterArt
             characterKey={team?.character ?? null}
-            className="champion-float aspect-2/3 w-48 shadow-[0_0_80px_rgba(255,96,0,0.35)] md:w-72"
+            className="champion-float aspect-2/3 w-48 shadow-[0_0_80px_rgba(236,108,1,0.35)] md:w-72"
             sizes="(min-width: 768px) 288px, 192px"
           />
         </div>
@@ -592,13 +592,13 @@ export default function ViewerPage() {
         .card-live { box-shadow: 0 0 28px rgba(255,59,48,0.22); }
         .card-reveal { animation: reveal 3s ease-out 1; }
         @keyframes reveal {
-          0% { transform: scale(1); box-shadow: 0 0 0 rgba(255,96,0,0); }
-          12% { transform: scale(1.04); box-shadow: 0 0 60px rgba(255,96,0,0.65); }
-          40% { transform: scale(1.015); box-shadow: 0 0 40px rgba(255,96,0,0.4); }
-          100% { transform: scale(1); box-shadow: 0 0 0 rgba(255,96,0,0); }
+          0% { transform: scale(1); box-shadow: 0 0 0 rgba(236,108,1,0); }
+          12% { transform: scale(1.04); box-shadow: 0 0 60px rgba(236,108,1,0.65); }
+          40% { transform: scale(1.015); box-shadow: 0 0 40px rgba(236,108,1,0.4); }
+          100% { transform: scale(1); box-shadow: 0 0 0 rgba(236,108,1,0); }
         }
         .champion-glow {
-          background: radial-gradient(circle, rgba(255,96,0,0.28) 0%, rgba(255,96,0,0.08) 40%, transparent 70%);
+          background: radial-gradient(circle, rgba(236,108,1,0.28) 0%, rgba(236,108,1,0.08) 40%, transparent 70%);
           animation: glowBreathe 4s ease-in-out infinite;
         }
         @keyframes glowBreathe { 50% { opacity: 0.6; transform: scale(1.08); } }
@@ -633,7 +633,7 @@ export default function ViewerPage() {
       {/* relative z-10: 대결 배경 레이어(fixed z-0) 위에 확실히 올린다 */}
       <header className="relative z-10 mb-2 flex flex-col gap-3 lg:mb-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-[10px] font-bold text-white/35 lg:text-[11px]">
+          <p className="font-en text-[10px] font-bold text-white/35 lg:text-[11px]">
             2026 LIKELION UNIV. 14TH HACKATHON
           </p>
           {/* 워드마크 높이는 기존 Anton 4xl/6xl 의 대문자 높이(약 26/43px)에 맞춘다 */}
@@ -655,7 +655,7 @@ export default function ViewerPage() {
                 {teamName(state, live.a)} <span className="mx-1 font-bold text-white/30">vs</span>{' '}
                 {teamName(state, live.b)}
               </p>
-              <p className="font-mono text-[11px] font-bold text-white/35">
+              <p className="font-en text-[11px] font-bold text-white/35">
                 {live.id} · {live.round === 3 ? 'FINAL' : `ROUND ${live.round}`}
               </p>
             </div>

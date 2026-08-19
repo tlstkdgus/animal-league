@@ -7,7 +7,7 @@ export default function CornerGlow() {
         top: '-32%', right: '-28%',
         width: 900, height: 700,
         borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(255,96,0,0.18) 0%, rgba(255,96,0,0.05) 40%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(236,108,1,0.18) 0%, rgba(236,108,1,0.05) 40%, transparent 70%)',
         filter: 'blur(30px)',
         pointerEvents: 'none',
         zIndex: 0,

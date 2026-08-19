@@ -29,8 +29,8 @@ export default function UniversitySelect({ universities, onSelect, isMobile = fa
         .univ-card-pc { display: flex; flex-direction: column; align-items: center; gap: 14px; background: none; border: none; cursor: pointer; padding: 0; width: 100%; }
         .univ-card-mobile { display: none; background: none; border: none; cursor: pointer; padding: 0; width: 100%; }
 
-        .univ-box:hover { border-color: #FF6000 !important; }
-        .univ-box-mobile:hover { border-color: #FF6000 !important; }
+        .univ-box:hover { border-color: #ec6c01 !important; }
+        .univ-box-mobile:hover { border-color: #ec6c01 !important; }
 
         @media (max-width: 743px) {
           .univ-grid { display: flex; flex-direction: column; gap: 10px; }
@@ -66,14 +66,14 @@ export default function UniversitySelect({ universities, onSelect, isMobile = fa
                     {logoUrl ? (
                       <Image src={logoUrl} alt={uni.name} fill style={{ objectFit: 'contain' }} />
                     ) : (
-                      <span style={{ fontSize: 16, fontWeight: 800, color: isAssigned ? '#FF6000' : '#949494' }}>{initial}</span>
+                      <span style={{ fontSize: 16, fontWeight: 800, color: isAssigned ? '#ec6c01' : '#949494' }}>{initial}</span>
                     )}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, width: '100%', padding: '0 6px' }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: isAssigned ? '#FF6000' : '#949494', textAlign: 'center', lineHeight: 1.2, wordBreak: 'keep-all', letterSpacing: '0.03em' }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: isAssigned ? '#ec6c01' : '#949494', textAlign: 'center', lineHeight: 1.2, wordBreak: 'keep-all', letterSpacing: '0.03em' }}>
                       {displayName}
                     </span>
-                    <div style={{ background: isAssigned ? '#FF6000' : '#3e3e3d', color: isAssigned ? '#fff' : '#949494', fontSize: 10, fontWeight: 500, padding: '3px 8px', borderRadius: 999, letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>
+                    <div style={{ background: isAssigned ? '#ec6c01' : '#3e3e3d', color: isAssigned ? '#fff' : '#949494', fontSize: 10, fontWeight: 500, padding: '3px 8px', borderRadius: 999, letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>
                       {isAssigned ? '완료' : '미배정'}
                     </div>
                   </div>
@@ -100,14 +100,14 @@ export default function UniversitySelect({ universities, onSelect, isMobile = fa
                       {logoUrl ? (
                         <Image src={logoUrl} alt={uni.name} fill style={{ objectFit: 'contain' }} />
                       ) : (
-                        <span style={{ fontSize: 18, fontWeight: 800, color: isAssigned ? '#FF6000' : '#949494' }}>{initial}</span>
+                        <span style={{ fontSize: 18, fontWeight: 800, color: isAssigned ? '#ec6c01' : '#949494' }}>{initial}</span>
                       )}
                     </div>
-                    <span style={{ fontSize: 16, fontWeight: 700, color: isAssigned ? '#FF6000' : '#949494', letterSpacing: '0.03em', lineHeight: 1 }}>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: isAssigned ? '#ec6c01' : '#949494', letterSpacing: '0.03em', lineHeight: 1 }}>
                       {displayName}
                     </span>
                   </div>
-                  <div style={{ background: isAssigned ? '#FF6000' : '#3e3e3d', color: isAssigned ? '#fff' : '#949494', fontSize: 12, fontWeight: 500, padding: '4px 8px', borderRadius: 999, letterSpacing: '0.03em', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  <div style={{ background: isAssigned ? '#ec6c01' : '#3e3e3d', color: isAssigned ? '#fff' : '#949494', fontSize: 12, fontWeight: 500, padding: '4px 8px', borderRadius: 999, letterSpacing: '0.03em', whiteSpace: 'nowrap', flexShrink: 0 }}>
                     {isAssigned ? '완료' : '미배정'}
                   </div>
                 </div>

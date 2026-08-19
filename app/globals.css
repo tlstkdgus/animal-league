@@ -7,14 +7,14 @@
   --border: rgba(255,255,255,0.07);
   --text: #f0f0f0;
   --text-sub: rgba(255,255,255,0.45);
-  --orange: #FF6000;
-  --orange-glow: rgba(255,96,0,0.18);
+  --orange: #ec6c01;
+  --orange-glow: rgba(236,108,1,0.18);
 
-  /* 트랙 컬러 4종 — 캐릭터 카드 에셋의 배색에서 뽑은 잠정값 (HANDOFF 미결: 확정 시 교체) */
-  --track-sjf: #FF6000;      /* 오렌지 (브랜드) */
-  --track-aac: #38B6F1;      /* 블루 */
-  --track-likelion: #8B7CF6; /* 퍼플 */
-  --track-open: #F468B0;     /* 핑크 */
+  /* 트랙 컬러 4종 — 브랜드 가이드 팔레트로 확정 (2026-08-19, 이전 잠정값 대체) */
+  --track-sjf: #ec6c01;      /* 오렌지 (브랜드) */
+  --track-aac: #009be4;      /* 블루 */
+  --track-likelion: #574b9c; /* 퍼플 */
+  --track-open: #e85f9d;     /* 핑크 */
 
   --live: #ff3b30;
   --done: #34c759;
@@ -25,6 +25,9 @@
   --color-foreground: var(--text);
   --font-sans: var(--font-suit);
   --font-display: var(--font-anton);
+  /* 영문 서브 서체 — 브랜드 가이드(8/19): 영문 ANTON(제목)·INTER(서브).
+     font-en 유틸로 노출 (경기 코드·영문 라벨 등 순수 라틴 서브 텍스트 전용) */
+  --font-en: var(--font-inter), var(--font-suit), sans-serif;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
