@@ -6,7 +6,7 @@
 
 import { ensureState, mutate, deleteAllVotes, type StateRow } from '@/lib/state';
 import { isAdminSession, setAdminCookie } from '@/lib/auth';
-import { votesForMatch } from '@/lib/votes';
+import { votesForMatch, upsertVote } from '@/lib/votes';
 import {
   startMatch,
   revealResult,
@@ -20,6 +20,8 @@ import {
   removeJudge,
   reset,
   trackWarnings,
+  findJudge,
+  judgeSlug,
   type Team,
   type Track,
 } from '@/lib/tournament';
@@ -28,6 +30,7 @@ import { handling, ok, fail, readJson } from '@/lib/api';
 export const dynamic = 'force-dynamic';
 
 const TEAM_TEXT_MAX = 40;
+const COMMENT_MAX = 500; // /api/vote 와 동일 컷
 
 /** 운영 화면용 스냅샷. adminPin 은 표시할 일이 없으므로 여기서도 내려보내지 않는다. */
 function adminView(row: StateRow) {
@@ -146,6 +149,39 @@ export async function POST(request: Request): Promise<Response> {
         case 'removeJudge': {
           const name = asString(body.name, '이름', 30);
           return ok({ state: adminView(await mutate((s) => removeJudge(s, name))) });
+        }
+
+        case 'proxyVote': {
+          // 운영 콘솔의 간사 대리 입력 — /api/vote 와 동일한 가드(명단제·live·승자)를
+          // 그대로 적용하고, 심사 코드 검증만 운영 세션이 대신한다. 상태 전이는 없다
+          // (표는 votes 테이블에만 쓰이므로 mutate() 를 거치지 않는다).
+          const matchId = asString(body.matchId, 'matchId', 8);
+          const name = asString(body.name, '이름', 30);
+          const registered = findJudge(current.data, name);
+          if (!registered) {
+            return fail(403, 'JUDGE_NOT_LISTED', '심사위원 명단에 없는 이름입니다.');
+          }
+          const match = current.data.matches.find((m) => m.id === matchId);
+          if (!match) return fail(400, 'MATCH_NOT_FOUND', `경기 ${matchId} 를 찾을 수 없습니다.`);
+          if (match.status !== 'live') {
+            return fail(409, 'MATCH_NOT_LIVE', '지금은 이 경기의 심사 시간이 아닙니다.');
+          }
+          if (body.winner !== 'A' && body.winner !== 'B') {
+            return fail(400, 'BAD_WINNER', '승자는 A 또는 B 여야 합니다.');
+          }
+          const comment =
+            typeof body.comment === 'string' ? body.comment.trim().slice(0, COMMENT_MAX) : '';
+          await upsertVote({
+            match_id: match.id,
+            judge_slug: judgeSlug(registered),
+            name: registered, // 명단 표기 그대로 — 대리 입력이어도 심사위원 명의 (§3)
+            winner: body.winner,
+            comment: comment.length > 0 ? comment : null,
+            video_a: body.videoA === true,
+            video_b: body.videoB === true,
+            ts: Date.now(),
+          });
+          return ok({ state: adminView(current) });
         }
 
         case 'reset': {
