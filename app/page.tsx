@@ -177,7 +177,14 @@ function MatchCard({
 // 대진표 (lg 이상 — 프로젝터)
 // ------------------------------------------------------------
 
-/** 피더 2장과 준결승을 잇는 엘보 연결선. drawn=false 면 점선. */
+/**
+ * 피더 2장과 준결승을 잇는 T자 브래킷 연결선. drawn=false 면 점선.
+ *
+ * TO-BE 시안(8/19 재확인) 구조 그대로: R1 두 카드의 중앙에서 나온 스텁이
+ * 컨테이너 중앙의 세로선으로 합쳐지고, 세로선 한가운데서 가운데 스텁이
+ * R2 카드 면까지 들어간다. 이전의 "]" 모양(세로선이 R2 옆을 길게 지나가고
+ * R2 로 들어가는 연결이 없음)은 카드가 선에 붙어 한 덩어리로 읽히는 원인이었다.
+ */
 function Connector({ mirrored, drawn }: { mirrored?: boolean; drawn: boolean }) {
   const border = drawn ? 'rgba(255,96,0,0.55)' : 'rgba(255,255,255,0.14)';
   const style = drawn ? 'solid' : 'dashed';
@@ -185,43 +192,55 @@ function Connector({ mirrored, drawn }: { mirrored?: boolean; drawn: boolean }) 
   const corner = mirrored
     ? { top: 'borderTopLeftRadius', bottom: 'borderBottomLeftRadius' }
     : { top: 'borderTopRightRadius', bottom: 'borderBottomRightRadius' };
+  // R1 쪽 절반(스텁+세로선) — 좌측 브래킷은 R1 이 왼쪽, 미러(우측)는 R1 이 오른쪽
+  const r1Half = mirrored ? { left: '50%', right: 0 } : { left: 0, right: '50%' };
+  const r2Half = mirrored ? { left: 0, right: '50%' } : { left: '50%', right: 0 };
 
   return (
-    // 연결선 폭이 곧 R1↔R2 사이 여백이다 — 디자이너 피드백(8/18): 결선 칸을 줄여
-    // 이 영역을 확보. 카드가 다닥다닥 붙어 보이던 원인이 여기의 w-5 였다.
-    // 선 양 끝을 카드에서 8px 씩 띄운다(left-2/right-2) — 선이 카드에 맞닿으면
-    // 카드들이 한 덩어리로 읽힌다 (8/19 피드백)
+    // 연결선 컨테이너 폭이 곧 R1↔R2 사이 여백 (디자이너 피드백 8/18)
     <div className="relative w-12 shrink-0 self-stretch 2xl:w-20" aria-hidden>
       <div
-        className="absolute left-2 right-2"
+        className="absolute"
         style={{
+          ...r1Half,
           top: '25%',
           height: '25%',
           [sideBorder]: `2px ${style} ${border}`,
           borderTop: `2px ${style} ${border}`,
-          [corner.top]: mirrored ? 0 : 10,
+          [corner.top]: 10,
         } as React.CSSProperties}
       />
       <div
-        className="absolute left-2 right-2"
+        className="absolute"
         style={{
+          ...r1Half,
           top: '50%',
           height: '25%',
           [sideBorder]: `2px ${style} ${border}`,
           borderBottom: `2px ${style} ${border}`,
-          [corner.bottom]: mirrored ? 0 : 10,
+          [corner.bottom]: 10,
+        } as React.CSSProperties}
+      />
+      {/* 가운데 스텁 — 세로선 중앙에서 R2 카드 면까지 */}
+      <div
+        className="absolute"
+        style={{
+          ...r2Half,
+          top: '50%',
+          marginTop: -1,
+          borderTop: `2px ${style} ${border}`,
         } as React.CSSProperties}
       />
     </div>
   );
 }
 
-/** 준결승 → 결승 한 줄 연결선. 양 끝 8px 띄움은 Connector 와 동일한 이유. */
+/** 준결승 → 결승 한 줄 연결선. */
 function FinalConnector({ drawn }: { drawn: boolean }) {
   return (
     <div className="relative w-8 shrink-0 self-stretch 2xl:w-12" aria-hidden>
       <div
-        className="absolute left-2 right-2 top-1/2"
+        className="absolute left-0 right-0 top-1/2"
         style={{
           borderTop: `2px ${drawn ? 'solid' : 'dashed'} ${drawn ? 'rgba(255,96,0,0.55)' : 'rgba(255,255,255,0.14)'}`,
         }}
@@ -602,17 +621,23 @@ export default function ViewerPage() {
         <div className="flex w-full items-stretch gap-0">
           <BracketSide state={state} semi={semi1} fallback={['R1-1', 'R1-2']} revealingId={revealingId} />
           <FinalConnector drawn={final.a !== null} />
-          {/* 결선 칸은 팀 2줄이 들어갈 최소 폭이면 된다 — 넓을수록 R1↔R2 여백을 잡아먹는다 */}
-          <div className="grid min-w-0 flex-[1.7] content-center gap-3 px-1 2xl:flex-[1.9]">
-            <p className="font-display text-center text-xl text-white/35">FINAL</p>
-            <div className="rounded-2xl border border-(--orange)/25 p-1.5">
-              <MatchCard
-                state={state}
-                match={final}
-                size="lg"
-                revealing={revealingId === 'F'}
-                undrawnLabel="결선 대진 확정 전"
-              />
+          {/* 결선 칸은 팀 2줄이 들어갈 최소 폭이면 된다 — 넓을수록 R1↔R2 여백을 잡아먹는다.
+              FINAL 라벨은 절대배치로 흐름에서 뺀다 — 라벨을 카드와 묶어 가운데 정렬하면
+              카드가 라벨 높이의 절반만큼 아래로 처져 R2 카드들과 세로 중심이 어긋난다 (8/19 시안) */}
+          <div className="grid min-w-0 flex-[1.7] content-center px-1 2xl:flex-[1.9]">
+            <div className="relative">
+              <p className="font-display absolute bottom-full left-0 right-0 mb-3 text-center text-xl text-white/35">
+                FINAL
+              </p>
+              <div className="rounded-2xl border border-(--orange)/25 p-1.5">
+                <MatchCard
+                  state={state}
+                  match={final}
+                  size="lg"
+                  revealing={revealingId === 'F'}
+                  undrawnLabel="결선 대진 확정 전"
+                />
+              </div>
             </div>
           </div>
           <FinalConnector drawn={final.b !== null} />
