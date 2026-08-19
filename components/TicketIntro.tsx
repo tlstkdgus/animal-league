@@ -88,8 +88,8 @@ export default function TicketIntro({ universityName, onContinue, onBack }: Prop
           gap: 10px;
           padding: 8px 16px;
           border-radius: 99px;
-          border: 1px solid rgba(255,96,0,0.35);
-          background: linear-gradient(180deg, rgba(255,96,0,0) 30%, rgba(255,96,0,0.12) 100%);
+          border: 1px solid rgba(236,108,1,0.35);
+          background: linear-gradient(180deg, rgba(236,108,1,0) 30%, rgba(236,108,1,0.12) 100%);
         }
         .ti-subtitle {
           font-size: 13px;
@@ -120,7 +120,7 @@ export default function TicketIntro({ universityName, onContinue, onBack }: Prop
           width: 100%;
           padding: 17px 10px;
           border-radius: 14px;
-          background: #FF6000;
+          background: #ec6c01;
           color: #fff;
           font-size: 16px;
           font-weight: 800;
@@ -128,7 +128,7 @@ export default function TicketIntro({ universityName, onContinue, onBack }: Prop
           cursor: pointer;
           letter-spacing: 0.03em;
           text-shadow: 0px 2px 4px rgba(214,81,0,0.25);
-          box-shadow: 0 6px 18px rgba(255,96,0,0.18);
+          box-shadow: 0 6px 18px rgba(236,108,1,0.18);
           transition: transform 0.08s;
           animation: ti-glow-anim 2.6s ease-in-out infinite;
         }
@@ -138,8 +138,8 @@ export default function TicketIntro({ universityName, onContinue, onBack }: Prop
           to { transform: rotate(360deg); }
         }
         @keyframes ti-glow-anim {
-          0%, 100% { box-shadow: 0 0 12px 1px rgba(255,96,0,0.10); }
-          50%      { box-shadow: 0 0 20px 3px rgba(255,96,0,0.16); }
+          0%, 100% { box-shadow: 0 0 12px 1px rgba(236,108,1,0.10); }
+          50%      { box-shadow: 0 0 20px 3px rgba(236,108,1,0.16); }
         }
 
         /* ===== PC: 좌우 2단 배치 ===== */

@@ -207,7 +207,7 @@ function JudgeForm({
         style={{
           borderColor: selected ? 'var(--orange)' : 'rgba(255,255,255,0.1)',
           background: selected ? 'var(--orange-glow)' : 'var(--surface)',
-          boxShadow: selected ? '0 0 24px rgba(255,96,0,0.25)' : 'none',
+          boxShadow: selected ? '0 0 24px rgba(236,108,1,0.25)' : 'none',
         }}
       >
         <div
