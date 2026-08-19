@@ -188,10 +188,12 @@ function Connector({ mirrored, drawn }: { mirrored?: boolean; drawn: boolean }) 
 
   return (
     // 연결선 폭이 곧 R1↔R2 사이 여백이다 — 디자이너 피드백(8/18): 결선 칸을 줄여
-    // 이 영역을 확보. 카드가 다닥다닥 붙어 보이던 원인이 여기의 w-5 였다
+    // 이 영역을 확보. 카드가 다닥다닥 붙어 보이던 원인이 여기의 w-5 였다.
+    // 선 양 끝을 카드에서 8px 씩 띄운다(left-2/right-2) — 선이 카드에 맞닿으면
+    // 카드들이 한 덩어리로 읽힌다 (8/19 피드백)
     <div className="relative w-12 shrink-0 self-stretch 2xl:w-20" aria-hidden>
       <div
-        className="absolute left-0 right-0"
+        className="absolute left-2 right-2"
         style={{
           top: '25%',
           height: '25%',
@@ -201,7 +203,7 @@ function Connector({ mirrored, drawn }: { mirrored?: boolean; drawn: boolean }) 
         } as React.CSSProperties}
       />
       <div
-        className="absolute left-0 right-0"
+        className="absolute left-2 right-2"
         style={{
           top: '50%',
           height: '25%',
@@ -214,12 +216,12 @@ function Connector({ mirrored, drawn }: { mirrored?: boolean; drawn: boolean }) 
   );
 }
 
-/** 준결승 → 결승 한 줄 연결선. */
+/** 준결승 → 결승 한 줄 연결선. 양 끝 8px 띄움은 Connector 와 동일한 이유. */
 function FinalConnector({ drawn }: { drawn: boolean }) {
   return (
     <div className="relative w-8 shrink-0 self-stretch 2xl:w-12" aria-hidden>
       <div
-        className="absolute left-0 right-0 top-1/2"
+        className="absolute left-2 right-2 top-1/2"
         style={{
           borderTop: `2px ${drawn ? 'solid' : 'dashed'} ${drawn ? 'rgba(255,96,0,0.55)' : 'rgba(255,255,255,0.14)'}`,
         }}
