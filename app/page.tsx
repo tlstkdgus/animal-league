@@ -13,7 +13,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { CARD_RADIUS, CharacterArt, SchoolTag } from '@/components/ui';
+import { CARD_RADIUS, CharacterArt, SchoolTag, Wordmark } from '@/components/ui';
 import { winningTeamId, type Match, type Team } from '@/lib/tournament';
 
 type PublicState = { teams: Team[]; matches: Match[]; rev: number };
@@ -572,7 +572,7 @@ export default function ViewerPage() {
   if (state === null) {
     return (
       <main className="grid min-h-dvh place-items-center">
-        <p className="font-display text-xl text-white/30">ANIMAL LEAGUE</p>
+        <Wordmark className="h-3.5 w-auto text-white/30" />
       </main>
     );
   }
@@ -636,8 +636,9 @@ export default function ViewerPage() {
           <p className="text-[10px] font-bold text-white/35 lg:text-[11px]">
             2026 LIKELION UNIV. 14TH HACKATHON
           </p>
-          <h1 className="font-display mt-1 text-4xl leading-none text-(--orange) lg:text-6xl">
-            ANIMAL LEAGUE
+          {/* 워드마크 높이는 기존 Anton 4xl/6xl 의 대문자 높이(약 26/43px)에 맞춘다 */}
+          <h1 className="mt-2 text-(--orange)">
+            <Wordmark className="h-7 w-auto lg:h-11" />
           </h1>
           <p className="mt-2 text-[13px] font-bold text-white/55 lg:text-sm">
             본선 토너먼트 · 8.25 COEX MAGOK
