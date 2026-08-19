@@ -18,8 +18,10 @@ import {
   reset,
   revealResult,
   setFinal,
+  setTimer,
   shuffle,
   startMatch,
+  TIMER_PRESETS,
   trackWarnings,
   updateTeam,
   winningTeamId,
@@ -405,4 +407,50 @@ test('리허설 더미 팀은 clearTeams 로 비운다', () => {
 
   assert.ok(cleared.teams.every((t) => t.team === '' && t.school === '' && t.character === null));
   assert.equal(cleared.teams.length, 8);
+});
+
+// ------------------------------------------------------------
+// 라운드 타이머 (§6.2 개정 8/19 — 운영 구동 서버 동기)
+// ------------------------------------------------------------
+
+test('경기 시작 시 해당 라운드 첫 프리셋 타이머가 자동 시작된다', () => {
+  const s = startMatch(seeded(), 'R1-1', 1000);
+  assert.deepEqual(s.timer, { matchId: 'R1-1', label: '발표', seconds: 300, startedAt: 1000 });
+});
+
+test('다른 경기를 시작하면 타이머도 새 경기로 교체된다', () => {
+  let s = startMatch(seeded(), 'R1-1', 1000);
+  s = startMatch(s, 'R1-2', 2000);
+  assert.equal(s.timer?.matchId, 'R1-2');
+  assert.equal(s.timer?.startedAt, 2000);
+});
+
+test('결과 공개와 함께 타이머가 해제된다', () => {
+  let s = startMatch(seeded(), 'R1-1', 1000);
+  s = revealResult(s, 'R1-1', 'A');
+  assert.equal(s.timer, null);
+});
+
+test('setTimer: 단계 전환은 live 라운드의 프리셋만 허용한다', () => {
+  const s = startMatch(seeded(), 'R1-1', 1000);
+  const next = setTimer(s, '공통 Q&A', 5000);
+  assert.deepEqual(next.timer, { matchId: 'R1-1', label: '공통 Q&A', seconds: 480, startedAt: 5000 });
+  // R1 에 없는 단계(R2 프리셋)는 거부
+  expectError('INVALID_TIMER_LABEL', () => setTimer(s, '시연'));
+});
+
+test('setTimer: 같은 단계를 다시 누르면 지금부터 재시작된다', () => {
+  const s = startMatch(seeded(), 'R1-1', 1000);
+  const restarted = setTimer(s, '발표', 90_000);
+  assert.equal(restarted.timer?.startedAt, 90_000);
+  assert.equal(restarted.timer?.seconds, TIMER_PRESETS[1][0].seconds);
+});
+
+test('setTimer: 진행 중 경기가 없으면 거부한다', () => {
+  expectError('NOT_LIVE', () => setTimer(seeded(), '발표'));
+});
+
+test('초기화하면 타이머도 해제된다', () => {
+  const s = startMatch(seeded(), 'R1-1', 1000);
+  assert.equal(reset(s).timer, null);
 });

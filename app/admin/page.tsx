@@ -11,8 +11,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import universityLogos from '@/lib/universityLogos';
 import { characterKeyForSchool, characterName } from '@/lib/characterMap';
-import type { Match, Team, Track, Side } from '@/lib/tournament';
-import { TRACKS } from '@/lib/tournament';
+import type { Match, Team, Track, Side, TimerState } from '@/lib/tournament';
+import { TRACKS, TIMER_PRESETS } from '@/lib/tournament';
 
 // ------------------------------------------------------------
 // 타입 · API 헬퍼
@@ -23,6 +23,7 @@ type AdminState = {
   matches: Match[];
   judges: string[];
   judgeCode: string;
+  timer: TimerState | null;
   rev: number;
   trackWarnings: string[];
 };
@@ -448,18 +449,83 @@ function ProxyEntry({
 
 const STATUS_LABEL = { ready: '대기', live: 'LIVE', done: '종료' } as const;
 
+/**
+ * 라운드 타이머 제어 (§6.2 개정 8/19) — 경기 시작 시 첫 단계가 자동 시작되고,
+ * 단계 전환·재시작은 여기서만 한다. 심사 화면은 표시 전용이라 이 버튼이 곧 무대 시계다.
+ * 남은 시간은 startedAt 기준으로 이 기기 시계가 계산 — 폴링 지연과 무관하게 정확하다.
+ */
+function TimerControl({
+  match,
+  timer,
+  busy,
+  onSetTimer,
+}: {
+  match: Match;
+  timer: TimerState | null;
+  busy: boolean;
+  onSetTimer: (label: string) => void;
+}) {
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const tick = setInterval(() => setNowMs(Date.now()), 500);
+    return () => clearInterval(tick);
+  }, []);
+
+  const active = timer && timer.matchId === match.id ? timer : null;
+  const remaining = active
+    ? Math.max(0, active.seconds - Math.floor((nowMs - active.startedAt) / 1000))
+    : null;
+  const clock =
+    remaining === null
+      ? '--:--'
+      : `${String(Math.floor(remaining / 60)).padStart(2, '0')}:${String(remaining % 60).padStart(2, '0')}`;
+  const warning = remaining !== null && remaining <= 30;
+
+  return (
+    <div className="mt-3 flex items-center gap-2 rounded-xl border border-white/10 bg-black/25 p-3">
+      <span
+        className="font-mono text-xl font-extrabold tabular-nums"
+        style={{ color: warning ? 'var(--live)' : undefined }}
+      >
+        {clock}
+      </span>
+      <span className="min-w-0 flex-1 truncate text-xs text-white/45">
+        {active ? active.label : '타이머 꺼짐'}
+      </span>
+      {TIMER_PRESETS[match.round].map((p) => (
+        <button
+          key={p.label}
+          disabled={busy}
+          onClick={() => onSetTimer(p.label)}
+          title="누르면 이 단계를 지금부터 다시 셉니다"
+          className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-bold disabled:opacity-40"
+          style={
+            active?.label === p.label
+              ? { background: 'var(--orange)', color: '#fff' }
+              : { background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.6)' }
+          }
+        >
+          {p.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function MatchCard({
   match,
   state,
   busy,
   onStart,
   onReveal,
+  onSetTimer,
 }: {
   match: Match;
   state: AdminState;
   busy: boolean;
   onStart: () => void;
   onReveal: (side: Side, tallyText: string) => void;
+  onSetTimer: (label: string) => void;
 }) {
   const resolved = match.a !== null && match.b !== null;
   const winnerIndex = match.winner === 'A' ? match.a : match.winner === 'B' ? match.b : null;
@@ -501,6 +567,9 @@ function MatchCard({
         </button>
       )}
 
+      {match.status === 'live' && (
+        <TimerControl match={match} timer={state.timer} busy={busy} onSetTimer={onSetTimer} />
+      )}
       {match.status === 'live' && <VotesPanel match={match} state={state} onReveal={onReveal} />}
 
       {match.status === 'done' && winnerIndex !== null && (
@@ -575,7 +644,7 @@ function MatchesTab({
       {section('라운드 1 — 같은 트랙 1:1')}
       <div className="grid gap-3 sm:grid-cols-2">
         {r1.map((m) => (
-          <MatchCard key={m.id} match={m} state={state} busy={busy} onStart={() => startWithGuard(m)} onReveal={revealWithConfirm(m)} />
+          <MatchCard key={m.id} match={m} state={state} busy={busy} onStart={() => startWithGuard(m)} onReveal={revealWithConfirm(m)} onSetTimer={(label) => run({ action: 'setTimer', label })} />
         ))}
       </div>
 
@@ -598,7 +667,7 @@ function MatchesTab({
       )}
       <div className="grid gap-3 sm:grid-cols-2">
         {r2.map((m) => (
-          <MatchCard key={m.id} match={m} state={state} busy={busy} onStart={() => startWithGuard(m)} onReveal={revealWithConfirm(m)} />
+          <MatchCard key={m.id} match={m} state={state} busy={busy} onStart={() => startWithGuard(m)} onReveal={revealWithConfirm(m)} onSetTimer={(label) => run({ action: 'setTimer', label })} />
         ))}
       </div>
 
@@ -620,7 +689,7 @@ function MatchesTab({
         </button>,
       )}
       {final && (
-        <MatchCard match={final} state={state} busy={busy} onStart={() => startWithGuard(final)} onReveal={revealWithConfirm(final)} />
+        <MatchCard match={final} state={state} busy={busy} onStart={() => startWithGuard(final)} onReveal={revealWithConfirm(final)} onSetTimer={(label) => run({ action: 'setTimer', label })} />
       )}
     </div>
   );

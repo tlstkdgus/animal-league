@@ -48,6 +48,41 @@ export type Match = {
   votes: Side[] | null;
 };
 
+// ------------------------------------------------------------
+// 라운드 타이머 (SPEC §6.2, 2026-08-19 개정 — 운영 구동 서버 동기)
+// ------------------------------------------------------------
+
+export type TimerPreset = { label: string; seconds: number };
+
+/** 라운드별 프리셋. 경기 시작 시 첫 항목이 자동 시작된다. */
+export const TIMER_PRESETS: Record<Round, TimerPreset[]> = {
+  1: [
+    { label: '발표', seconds: 5 * 60 },
+    { label: '공통 Q&A', seconds: 8 * 60 },
+  ],
+  2: [
+    { label: '시연', seconds: 3 * 60 },
+    { label: '기술 Q&A', seconds: 5 * 60 },
+  ],
+  3: [
+    { label: '라스트 어필', seconds: 100 },
+    { label: '심사 합의', seconds: 100 },
+  ],
+};
+
+/**
+ * 진행 중 타이머. 서버는 **시작 시각만** 기록하고 남은 시간은 각 기기가 계산한다 —
+ * 폴링 지연(3초)이 있어도 남은 시간 자체는 어긋나지 않는다.
+ * 일시정지는 없다: 중앙 시계의 정지 상태 관리는 당일 운영 복잡도만 높인다 — 재시작으로 갈음.
+ */
+export type TimerState = {
+  matchId: MatchId;
+  label: string;
+  seconds: number;
+  /** epoch ms (서버 시각) */
+  startedAt: number;
+};
+
 /**
  * tournament_state.data 에 통째로 들어가는 jsonb 문서.
  *
@@ -61,6 +96,8 @@ export type TournamentState = {
   judges: string[];
   judgeCode: string;
   adminPin: string;
+  /** 진행 중 타이머. 옵셔널인 이유: 이 필드 도입(8/19) 전에 저장된 문서에는 없다. */
+  timer?: TimerState | null;
 };
 
 // ------------------------------------------------------------
@@ -78,6 +115,7 @@ export type TournamentErrorCode =
   | 'FINAL_ALREADY_SET'
   | 'INVALID_TEAM_INDEX'
   | 'INVALID_TRACK'
+  | 'INVALID_TIMER_LABEL'
   | 'INVALID_CODE'
   | 'INVALID_JUDGE_NAME'
   | 'JUDGE_DUPLICATE'
@@ -122,6 +160,7 @@ export function createInitialState(overrides?: Partial<TournamentState>): Tourna
     judges: [],
     judgeCode: 'ANIMAL',
     adminPin: '0825',
+    timer: null,
     ...overrides,
   };
 }
@@ -228,8 +267,16 @@ function replaceMatch(state: TournamentState, id: MatchId, patch: Partial<Match>
 /**
  * 경기 시작. 대진 미확정이면 거부하고, 기존 live 경기는 ready 로 되돌린다
  * (SPEC §4.1 — live 는 동시에 1경기).
+ *
+ * 타이머는 해당 라운드 첫 프리셋으로 자동 시작한다 (§6.2 개정 8/19 — 심사위원이
+ * 누르는 게 아니라 운영 액션에 따라 돈다). now 를 인자로 받는 이유: 전이가
+ * mutate() 재시도에서 재적용되므로 순수해야 하고, 테스트에서 시각을 고정해야 한다.
  */
-export function startMatch(state: TournamentState, matchId: string): TournamentState {
+export function startMatch(
+  state: TournamentState,
+  matchId: string,
+  now: number = Date.now(),
+): TournamentState {
   const target = getMatch(state, matchId);
 
   if (target.status === 'done') {
@@ -239,6 +286,7 @@ export function startMatch(state: TournamentState, matchId: string): TournamentS
     throw new TournamentError('BRACKET_UNRESOLVED', `${target.id} 은 대진이 아직 확정되지 않았습니다.`);
   }
 
+  const first = TIMER_PRESETS[target.round][0];
   return {
     ...state,
     matches: state.matches.map((m) => {
@@ -246,6 +294,33 @@ export function startMatch(state: TournamentState, matchId: string): TournamentS
       if (m.status === 'live') return { ...m, status: 'ready' as const };
       return m;
     }),
+    timer: { matchId: target.id, label: first.label, seconds: first.seconds, startedAt: now },
+  };
+}
+
+/**
+ * 타이머 단계 전환/재시작 — live 경기의 라운드 프리셋 중 하나를 지금부터 다시 센다.
+ * 운영 화면 전용 (§6.3). 같은 label 을 다시 누르면 재시작이 된다.
+ */
+export function setTimer(
+  state: TournamentState,
+  label: string,
+  now: number = Date.now(),
+): TournamentState {
+  const live = liveMatch(state);
+  if (!live) {
+    throw new TournamentError('NOT_LIVE', '진행 중인 경기가 없어 타이머를 시작할 수 없습니다.');
+  }
+  const preset = TIMER_PRESETS[live.round].find((p) => p.label === label);
+  if (!preset) {
+    throw new TournamentError(
+      'INVALID_TIMER_LABEL',
+      `라운드 ${live.round} 의 타이머 단계가 아닙니다: ${label}`,
+    );
+  }
+  return {
+    ...state,
+    timer: { matchId: live.id, label: preset.label, seconds: preset.seconds, startedAt: now },
   };
 }
 
@@ -274,7 +349,8 @@ export function revealResult(
     throw new TournamentError('NOT_LIVE', `${target.id} 을 먼저 시작해야 결과를 공개할 수 있습니다.`);
   }
 
-  return replaceMatch(state, target.id, { status: 'done', winner, votes: [...votes] });
+  // 공개와 함께 타이머 해제 — 심사 시간이 끝난 화면에 시계가 남아 있으면 안 된다
+  return { ...replaceMatch(state, target.id, { status: 'done', winner, votes: [...votes] }), timer: null };
 }
 
 /**
