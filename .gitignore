@@ -44,3 +44,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 디자이너 원본 에셋 (미최적화 대용량 — 사용 확정 시 리사이즈본만 커밋)
+/public/14th_hackathon_character/
+/public/14th_hackathon_badge/

@@ -2,10 +2,11 @@
 
 // 스크린(viewer) 화면 — 명세 §6.1. 무대 프로젝터(1920×1080)와 참가자 폰이 대상.
 //
-// 레이아웃은 좌우 수렴형 대진표다 (아래→위 피라미드형과 실캡처 비교 후 결정, 2026-08-18):
-// 왼쪽 R1 2경기 → 준결승, 오른쪽 R1 2경기 → 준결승, 중앙 결승.
-// R2 는 랜덤 추첨이라 연결선이 고정이 아니다 — 추첨 전엔 점선(미정),
-// 추첨 후엔 각 R1 승자가 실제로 배치된 준결승 쪽으로 실선이 이어진다.
+// 레이아웃은 피라미드형 대진표다 (2026-08-20 결정, 8/18 수렴형을 뒤집음):
+// 결승(상) ← 준결승 2(중) ← R1 8팀 개별 카드(하). 수렴형은 좌우 사이드의 R1 이
+// 같은 사이드 준결승으로 고정 진출하는 것처럼 읽혔는데 R2 는 랜덤 추첨이다.
+// 그래서 하단(R1)↔중단(R2)은 선으로 잇지 않고, 추첨 후 승자 슬롯에 진출 배지로
+// 표기한다. 중간 "랜덤 추첨" 안내 밴드는 넣지 않는다 (8/20 피드백: 시각 소음).
 //
 // 입력 요소 없음. 3초 폴링 + rev 가드, 실패 시 마지막 정상 스냅샷 유지 (명세 §7).
 // 결과 공개 연출은 직전 스냅샷과의 status diff 로 감지한 1회성 애니메이션 (~3초),
@@ -32,20 +33,6 @@ function teamName(state: PublicState, index: number | null): string {
 }
 
 const byId = (state: PublicState, id: string) => state.matches.find((m) => m.id === id)!;
-
-/**
- * 준결승의 상·하 피더(R1 경기). 추첨 후에는 승자가 a/b 슬롯에 실제로 배치된
- * R1 경기를 찾아 잇고, 추첨 전에는 기본 배치(왼쪽 R1-1·2 / 오른쪽 R1-3·4)를 쓴다.
- */
-function feedersOf(state: PublicState, semi: Match, fallback: [string, string]): [Match, Match] {
-  const r1 = state.matches.filter((m) => m.round === 1);
-  if (semi.a !== null && semi.b !== null) {
-    const top = r1.find((m) => winningTeamId(m) === semi.a);
-    const bottom = r1.find((m) => winningTeamId(m) === semi.b);
-    if (top && bottom) return [top, bottom];
-  }
-  return [byId(state, fallback[0]), byId(state, fallback[1])];
-}
 
 // ------------------------------------------------------------
 // 경기 카드
@@ -178,110 +165,130 @@ function MatchCard({
 // ------------------------------------------------------------
 
 /**
- * 피더 2장과 준결승을 잇는 T자 브래킷 연결선. drawn=false 면 점선.
- *
- * TO-BE 시안(8/19 재확인) 구조 그대로: R1 두 카드의 중앙에서 나온 스텁이
- * 컨테이너 중앙의 세로선으로 합쳐지고, 세로선 한가운데서 가운데 스텁이
- * R2 카드 면까지 들어간다. 이전의 "]" 모양(세로선이 R2 옆을 길게 지나가고
- * R2 로 들어가는 연결이 없음)은 카드가 선에 붙어 한 덩어리로 읽히는 원인이었다.
+ * R1 개별 팀 카드 — 피라미드 하단. 세로형 (캐릭터 위, 팀명·학교 아래).
+ * done 이면 승자 하이라이트 + 승 마크, 패자 dim (MatchCard 의 상태 표현과 동일 문법).
  */
-function Connector({ mirrored, drawn }: { mirrored?: boolean; drawn: boolean }) {
-  const border = drawn ? 'rgba(236,108,1,0.55)' : 'rgba(255,255,255,0.14)';
-  const style = drawn ? 'solid' : 'dashed';
-  const sideBorder = mirrored ? 'borderLeft' : 'borderRight';
-  const corner = mirrored
-    ? { top: 'borderTopLeftRadius', bottom: 'borderBottomLeftRadius' }
-    : { top: 'borderTopRightRadius', bottom: 'borderBottomRightRadius' };
-  // R1 쪽 절반(스텁+세로선) — 좌측 브래킷은 R1 이 왼쪽, 미러(우측)는 R1 이 오른쪽
-  const r1Half = mirrored ? { left: '50%', right: 0 } : { left: 0, right: '50%' };
-  const r2Half = mirrored ? { left: 0, right: '50%' } : { left: '50%', right: 0 };
-
-  return (
-    // 연결선 컨테이너 폭이 곧 R1↔R2 사이 여백 (디자이너 피드백 8/18)
-    <div className="relative w-12 shrink-0 self-stretch 2xl:w-20" aria-hidden>
-      <div
-        className="absolute"
-        style={{
-          ...r1Half,
-          top: '25%',
-          height: '25%',
-          [sideBorder]: `2px ${style} ${border}`,
-          borderTop: `2px ${style} ${border}`,
-          [corner.top]: 10,
-        } as React.CSSProperties}
-      />
-      <div
-        className="absolute"
-        style={{
-          ...r1Half,
-          top: '50%',
-          height: '25%',
-          [sideBorder]: `2px ${style} ${border}`,
-          borderBottom: `2px ${style} ${border}`,
-          [corner.bottom]: 10,
-        } as React.CSSProperties}
-      />
-      {/* 가운데 스텁 — 세로선 중앙에서 R2 카드 면까지 */}
-      <div
-        className="absolute"
-        style={{
-          ...r2Half,
-          top: '50%',
-          marginTop: -1,
-          borderTop: `2px ${style} ${border}`,
-        } as React.CSSProperties}
-      />
-    </div>
-  );
-}
-
-/** 준결승 → 결승 한 줄 연결선. */
-function FinalConnector({ drawn }: { drawn: boolean }) {
-  return (
-    <div className="relative w-8 shrink-0 self-stretch 2xl:w-12" aria-hidden>
-      <div
-        className="absolute left-0 right-0 top-1/2"
-        style={{
-          borderTop: `2px ${drawn ? 'solid' : 'dashed'} ${drawn ? 'rgba(236,108,1,0.55)' : 'rgba(255,255,255,0.14)'}`,
-        }}
-      />
-    </div>
-  );
-}
-
-function BracketSide({
+function TeamSolo({
   state,
-  semi,
-  fallback,
-  mirrored,
+  index,
+  match,
+  side,
+}: {
+  state: PublicState;
+  index: number | null;
+  match: Match;
+  side: 'A' | 'B';
+}) {
+  const team = teamAt(state, index);
+  const isWinner = match.status === 'done' && match.winner === side;
+  const isLoser = match.status === 'done' && match.winner !== side;
+
+  return (
+    <div
+      className={`w-34 rounded-xl border p-2.5 pb-3 text-center transition-colors 2xl:w-38 ${isLoser ? 'opacity-30' : ''}`}
+      style={{
+        borderColor: isWinner ? 'rgba(236,108,1,0.55)' : 'rgba(255,255,255,0.1)',
+        background: isWinner
+          ? 'var(--orange-glow)'
+          : 'linear-gradient(180deg, var(--surface2) 0%, var(--surface) 100%)',
+      }}
+    >
+      <CharacterArt
+        characterKey={team?.character ?? null}
+        className="mx-auto aspect-2/3 w-16 2xl:w-19"
+        sizes="76px"
+      />
+      <div className="mt-2 line-clamp-2 text-[13px] font-extrabold leading-tight tracking-tight 2xl:text-sm">
+        {teamName(state, index)}
+      </div>
+      <div className="mt-1 flex justify-center">
+        {team && index !== null ? (
+          <SchoolTag school={team.school || '학교 미입력'} track={team.track} size="sm" />
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 피라미드 하단 한 열 — 승자 슬롯 + 세로 스텁 + 팀 쌍(개별 카드 2장).
+ * 승자 슬롯은 done 전엔 점선 "R1-N 승자", done 후엔 승자 팀명.
+ * 추첨이 끝나면 승자 슬롯에 "→ R2-N" 진출 배지 — R2 는 랜덤이라 이 열에서
+ * 준결승으로 선을 긋지 않는다 (긋는 순간 사이드 고정 진출로 읽힌다).
+ */
+function PairColumn({
+  state,
+  match,
   revealingId,
 }: {
   state: PublicState;
-  semi: Match;
-  fallback: [string, string];
-  mirrored?: boolean;
+  match: Match;
   revealingId: string | null;
 }) {
-  const [top, bottom] = feedersOf(state, semi, fallback);
-  const drawn = semi.a !== null && semi.b !== null;
-
-  const pair = (
-    <div className="flex min-w-0 flex-1 flex-col justify-center gap-12">
-      <MatchCard state={state} match={top} revealing={revealingId === top.id} />
-      <MatchCard state={state} match={bottom} revealing={revealingId === bottom.id} />
-    </div>
-  );
-  const semiCard = (
-    <div className="grid min-w-0 flex-1 content-center">
-      <MatchCard state={state} match={semi} revealing={revealingId === semi.id} undrawnLabel="추첨 대기" />
-    </div>
-  );
+  const live = match.status === 'live';
+  const done = match.status === 'done';
+  const winnerIdx = winningTeamId(match);
+  const dest =
+    done && winnerIdx !== null
+      ? state.matches.find((m) => m.round === 2 && (m.a === winnerIdx || m.b === winnerIdx))
+      : undefined;
 
   return (
-    <div className="flex min-w-0 flex-[3] items-stretch">
-      {mirrored ? semiCard : pair}
-      <Connector mirrored={mirrored} drawn={drawn} />
-      {mirrored ? pair : semiCard}
+    <div className={`flex flex-col items-center ${revealingId === match.id ? 'card-reveal' : ''}`}>
+      <div
+        className={`w-44 rounded-lg py-1.5 text-center text-xs font-bold 2xl:w-48 ${
+          done ? 'border border-(--orange)/45' : 'border border-dashed border-white/20 text-white/40'
+        }`}
+        style={{ background: done ? 'var(--orange-glow)' : 'rgba(255,255,255,0.03)' }}
+      >
+        {done ? (
+          <>
+            <span className="line-clamp-1 px-2">{teamName(state, winnerIdx)}</span>
+            {dest && (
+              <span className="font-en block text-[10px] font-bold text-(--orange)">→ {dest.id} 진출</span>
+            )}
+          </>
+        ) : (
+          <span>
+            <span className="font-en">{match.id}</span> 승자
+          </span>
+        )}
+      </div>
+      <div
+        className="h-4 2xl:h-5"
+        style={{ borderLeft: `2px ${done ? 'solid rgba(236,108,1,0.55)' : 'dashed rgba(255,255,255,0.16)'}` }}
+        aria-hidden
+      />
+      <div
+        className={`viewer-card relative flex items-center gap-2 rounded-2xl border p-2 2xl:gap-2.5 ${live ? 'card-live' : ''}`}
+        style={{ borderColor: live ? 'var(--live)' : 'rgba(255,255,255,0.07)' }}
+      >
+        {live && (
+          <span className="live-pulse absolute -top-2.5 left-1/2 -translate-x-1/2 rounded bg-(--live) px-1.5 py-0.5 text-[10px] font-extrabold text-white">
+            LIVE
+          </span>
+        )}
+        <TeamSolo state={state} index={match.a} match={match} side="A" />
+        <span className="text-[10px] font-extrabold text-white/25">VS</span>
+        <TeamSolo state={state} index={match.b} match={match} side="B" />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 결승 ↔ 준결승 연결선 — 고정 구조라 항상 그린다 (결선 확정 전 점선).
+ * 폭은 준결승 두 카드의 중심 간격과 일치해야 한다: xl 288+272=560, 2xl 320+320=640.
+ */
+function PyramidConnector({ drawn }: { drawn: boolean }) {
+  const border = drawn ? 'rgba(236,108,1,0.55)' : 'rgba(255,255,255,0.14)';
+  const line = `2px ${drawn ? 'solid' : 'dashed'} ${border}`;
+  return (
+    <div className="relative mx-auto h-8 w-140 2xl:w-160" aria-hidden>
+      <div className="absolute left-1/2 top-0" style={{ height: 14, borderLeft: line }} />
+      <div className="absolute left-0 right-0" style={{ top: 14, borderTop: line }} />
+      <div className="absolute bottom-0 left-0" style={{ top: 14, borderLeft: line }} />
+      <div className="absolute bottom-0 right-0" style={{ top: 14, borderRight: line }} />
     </div>
   );
 }
@@ -672,33 +679,42 @@ export default function ViewerPage() {
         <FocusLive state={state} match={live} />
       ) : (
         <>
-      {/* 대진표 — xl(1280px) 이상만 좌우 수렴형. 1024~1279 는 5열이 물리적으로 좁아
-          내용이 카드 밖으로 밀린다 (실사용 노트북 제보로 lg → xl 상향) */}
-      <div className="hidden flex-1 items-center py-2 xl:flex">
-        <div className="flex w-full items-stretch gap-0">
-          <BracketSide state={state} semi={semi1} fallback={['R1-1', 'R1-2']} revealingId={revealingId} />
-          <FinalConnector drawn={final.a !== null} />
-          {/* 결선 칸은 팀 2줄이 들어갈 최소 폭이면 된다 — 넓을수록 R1↔R2 여백을 잡아먹는다.
-              FINAL 라벨은 절대배치로 흐름에서 뺀다 — 라벨을 카드와 묶어 가운데 정렬하면
-              카드가 라벨 높이의 절반만큼 아래로 처져 R2 카드들과 세로 중심이 어긋난다 (8/19 시안) */}
-          <div className="grid min-w-0 flex-[1.7] content-center px-1 2xl:flex-[1.9]">
-            <div className="relative">
-              <p className="font-display absolute bottom-full left-0 right-0 mb-3 text-center text-xl text-white/35">
-                FINAL
-              </p>
-              <div className="rounded-2xl border border-(--orange)/25 p-1.5">
-                <MatchCard
-                  state={state}
-                  match={final}
-                  size="lg"
-                  revealing={revealingId === 'F'}
-                  undrawnLabel="결선 대진 확정 전"
-                />
-              </div>
-            </div>
+      {/* 대진표 — xl(1280px) 이상은 피라미드형 (8/20 결정). 결승(상) ← 준결승(중) ← R1 개별(하).
+          xl 미만은 물리적으로 좁아 세로 스택 유지 (실사용 노트북 제보로 lg → xl 상향 이력) */}
+      <div className="hidden flex-1 flex-col justify-center py-2 xl:flex">
+        <p className="font-display mb-2 text-center text-xl text-white/35">FINAL</p>
+        <div className="flex justify-center">
+          <div className="w-95 rounded-2xl border border-(--orange)/25 p-1.5 2xl:w-105">
+            <MatchCard
+              state={state}
+              match={final}
+              size="lg"
+              revealing={revealingId === 'F'}
+              undrawnLabel="결선 대진 확정 전"
+            />
           </div>
-          <FinalConnector drawn={final.b !== null} />
-          <BracketSide state={state} semi={semi2} fallback={['R1-3', 'R1-4']} mirrored revealingId={revealingId} />
+        </div>
+        <PyramidConnector drawn={final.a !== null && final.b !== null} />
+        {/* 준결승 두 카드 — 폭·간격이 PyramidConnector 폭과 맞물려 있다 (해당 주석 참조) */}
+        <div className="flex justify-center gap-68 2xl:gap-80">
+          {[semi1, semi2].map((semi) => (
+            <div key={semi.id} className="w-72 2xl:w-80">
+              <MatchCard
+                state={state}
+                match={semi}
+                revealing={revealingId === semi.id}
+                undrawnLabel="추첨 대기"
+              />
+            </div>
+          ))}
+        </div>
+        {/* R1 하단 — 준결승과 선으로 잇지 않는다 (R2 랜덤 추첨, 파일 상단 주석 참조) */}
+        <div className="mt-7 flex justify-center gap-7 2xl:mt-9 2xl:gap-10">
+          {state.matches
+            .filter((m) => m.round === 1)
+            .map((m) => (
+              <PairColumn key={m.id} state={state} match={m} revealingId={revealingId} />
+            ))}
         </div>
       </div>
 
