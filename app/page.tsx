@@ -460,30 +460,128 @@ function RevealSequence({ state, match }: { state: PublicState; match: Match }) 
 
       {votes.length > 0 && (
         <div className="flex flex-wrap items-end justify-center gap-3.5">
-          {/* 표받은 팀의 캐릭터 카드가 열린다 — A/B 글자는 어느 팀인지 한 번 더 생각하게 만든다 */}
+          {/* 실물 카드 문법 (8/20 확정): 뒷면(card-back-Q)이 먼저 깔리고 한 장씩 앞면으로
+              뒤집힌다. 앞면은 표받은 팀의 캐릭터 카드 — A/B 글자는 한 번 더 생각하게 만든다.
+              오픈 시계는 chipFlip 의 animationend 하나 — chipIn 것과 섞이지 않게 이름을 검사 */}
           {votes.map((side, i) => (
             <div
               key={i}
-              className="vote-chip relative aspect-2/3 w-16 overflow-hidden border-2 bg-white/5 lg:w-20"
-              onAnimationEnd={() => setOpened((n) => Math.max(n, i + 1))}
-              style={{
-                borderRadius: CARD_RADIUS, // 카드 에셋의 베이크 곡률과 일치 (ui.tsx 참조)
-                animationDelay: `${(i * CHIP_INTERVAL_MS) / 1000}s`,
-                borderColor: SIDE_COLORS[side],
-                boxShadow: `0 0 18px color-mix(in srgb, ${SIDE_COLORS[side]} 35%, transparent)`,
-              }}
+              className="chip-outer relative aspect-2/3 w-16 lg:w-20"
+              style={{ animationDelay: `${i * 0.06}s` }}
             >
-              {chipCharacter(side) ? (
-                <Image src={`/characters/${chipCharacter(side)}.png`} alt="" fill sizes="80px" className="object-cover" />
-              ) : (
-                <span className="grid h-full w-full place-items-center text-xl font-extrabold" style={{ color: SIDE_COLORS[side] }}>
-                  {side}
-                </span>
-              )}
+              <div
+                className="chip-inner relative h-full w-full"
+                onAnimationEnd={(e) => e.animationName === 'chipFlip' && setOpened((n) => Math.max(n, i + 1))}
+                style={{ animationDelay: `${(i * CHIP_INTERVAL_MS) / 1000}s` }}
+              >
+                {/* 앞면 — 팀 캐릭터 카드 */}
+                <div
+                  className="chip-face absolute inset-0 overflow-hidden border-2 bg-white/5"
+                  style={{
+                    borderRadius: CARD_RADIUS, // 카드 에셋의 베이크 곡률과 일치 (ui.tsx 참조)
+                    borderColor: SIDE_COLORS[side],
+                    boxShadow: `0 0 18px color-mix(in srgb, ${SIDE_COLORS[side]} 35%, transparent)`,
+                  }}
+                >
+                  {chipCharacter(side) ? (
+                    <Image src={`/characters/${chipCharacter(side)}.png`} alt="" fill sizes="80px" className="object-cover" />
+                  ) : (
+                    <span className="grid h-full w-full place-items-center text-xl font-extrabold" style={{ color: SIDE_COLORS[side] }}>
+                      {side}
+                    </span>
+                  )}
+                </div>
+                {/* 뒷면 — 물음표 카드 (디자이너 에셋) */}
+                <div
+                  className="chip-face chip-back absolute inset-0 overflow-hidden border border-white/15"
+                  style={{ borderRadius: CARD_RADIUS }}
+                >
+                  <Image src="/card-back-Q-ver2.png" alt="" fill sizes="80px" className="object-cover" />
+                </div>
+              </div>
             </div>
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// ------------------------------------------------------------
+// R2 추첨 연출 — 뒷면 카드 4장 셔플 → 순서대로 뒤집혀 대진 공개 (8/20 확정)
+// ------------------------------------------------------------
+
+/** 추첨 시퀀스 전체 길이(ms) — ViewerPage 의 종료 타이머와 아래 딜레이들이 공유한다. */
+const DRAW_SEQUENCE_MS = 8000;
+/** 카드 플립 시작 시점(s) — 셔플(2.2s)이 끝난 뒤 0.5s 간격으로 4장. */
+const DRAW_FLIP_BASE_S = 2.6;
+
+function DrawCard({ state, index, order }: { state: PublicState; index: number | null; order: number }) {
+  const team = teamAt(state, index);
+  return (
+    <div
+      className="draw-outer relative aspect-2/3 w-28 lg:w-36"
+      style={{ animation: `drawShuf${order} 2.2s cubic-bezier(0.35, 0, 0.25, 1) 0.2s both` }}
+    >
+      <div className="chip-inner relative h-full w-full" style={{ animationDelay: `${DRAW_FLIP_BASE_S + order * 0.5}s` }}>
+        <div
+          className="chip-face absolute inset-0 overflow-hidden border border-(--orange)/40 bg-white/5"
+          style={{ borderRadius: CARD_RADIUS, boxShadow: '0 0 24px rgba(236,108,1,0.25)' }}
+        >
+          {team?.character ? (
+            <Image src={`/characters/${team.character}.png`} alt="" fill sizes="144px" className="object-cover" />
+          ) : null}
+        </div>
+        <div
+          className="chip-face chip-back absolute inset-0 overflow-hidden border border-white/15"
+          style={{ borderRadius: CARD_RADIUS }}
+        >
+          <Image src="/card-back-0624.png" alt="" fill sizes="144px" className="object-cover" />
+        </div>
+      </div>
+      {/* 팀명은 카드가 뒤집힌 뒤에 떠오른다 */}
+      <p
+        className="draw-name absolute -bottom-8 left-1/2 w-40 -translate-x-1/2 text-center text-sm font-extrabold lg:text-base"
+        style={{ animationDelay: `${DRAW_FLIP_BASE_S + order * 0.5 + 0.45}s` }}
+      >
+        {teamName(state, index)}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * R2 추첨 공개 — 브래킷 대신 전면 재생. 뒷면 카드 4장이 교차하며 섞이고,
+ * 자리를 잡은 뒤 한 장씩 뒤집혀 R2-1 / R2-2 대진이 드러난다.
+ * 셔플 경로는 CSS 키프레임 4벌 고정 — 실제 무작위성은 서버 추첨(drawRound2)이
+ * 이미 만들었고, 화면의 섞임은 그 결과를 발표하는 연출일 뿐이다.
+ */
+function DrawSequence({ state, semis }: { state: PublicState; semis: [Match, Match] }) {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-12 py-6">
+      <p className="champion-rise text-2xl font-extrabold tracking-tight lg:text-4xl">2라운드 대진을 추첨합니다</p>
+      <div className="flex items-start justify-center gap-14 lg:gap-24">
+        {semis.map((semi, s) => (
+          <div key={semi.id} className="flex flex-col items-center gap-5">
+            <span
+              className="draw-name font-en text-sm font-bold text-(--orange)"
+              style={{ animationDelay: `${DRAW_FLIP_BASE_S + 2 + s * 0.2}s` }}
+            >
+              {semi.id}
+            </span>
+            <div className="flex items-center gap-5 lg:gap-7">
+              <DrawCard state={state} index={semi.a} order={s * 2} />
+              <span
+                className="draw-name text-xs font-extrabold text-white/30"
+                style={{ animationDelay: `${DRAW_FLIP_BASE_S + 2 + s * 0.2}s` }}
+              >
+                VS
+              </span>
+              <DrawCard state={state} index={semi.b} order={s * 2 + 1} />
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -534,8 +632,11 @@ export default function ViewerPage() {
   const [revealingId, setRevealingId] = useState<string | null>(null);
   // 결과 공개 시퀀스 — 공개 순간의 경기 스냅샷을 고정해서 재생 (폴링 갱신에 흔들리지 않게)
   const [sequence, setSequence] = useState<Match | null>(null);
+  // R2 추첨 시퀀스 — 추첨 순간의 준결승 스냅샷 고정 (같은 이유)
+  const [drawSeq, setDrawSeq] = useState<[Match, Match] | null>(null);
   const revRef = useRef(0);
   const prevStatusRef = useRef<Record<string, string>>({});
+  const prevDrawnRef = useRef<boolean | null>(null); // null = 아직 첫 스냅샷 전
 
   const poll = useCallback(async () => {
     try {
@@ -561,6 +662,17 @@ export default function ViewerPage() {
         setRevealingId(justDone.id);
         setTimeout(() => setRevealingId(null), total + 3000);
       }
+
+      // R2 추첨 감지 — 준결승 슬롯이 비어 있다가 채워지는 순간 1회성 연출 (8/20).
+      // 첫 폴링(prevDrawnRef null)에서는 재생하지 않는다 — 추첨이 끝난 상태로 새로고침한
+      // 화면이 연출을 다시 트는 사고 방지 (공개 연출의 prev[m.id] 가드와 같은 이유)
+      const semis = next.matches.filter((m) => m.round === 2);
+      const drawnNow = semis.length === 2 && semis.every((m) => m.a !== null && m.b !== null);
+      if (drawnNow && prevDrawnRef.current === false) {
+        setDrawSeq([semis[0], semis[1]]);
+        setTimeout(() => setDrawSeq(null), DRAW_SEQUENCE_MS);
+      }
+      prevDrawnRef.current = drawnNow;
       setState(next);
     } catch {
       /* 마지막 정상 스냅샷 유지 */
@@ -613,11 +725,25 @@ export default function ViewerPage() {
         @keyframes rise { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: none; } }
         .champion-float { animation: floaty 5s ease-in-out infinite; }
         @keyframes floaty { 50% { transform: translateY(-12px); } }
-        .vote-chip { animation: chipOpen 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
-        @keyframes chipOpen {
-          from { opacity: 0; transform: translateY(34px) rotateY(90deg); }
-          to { opacity: 1; transform: none; }
+        /* 카드 플립 공통 (공개 칩 · 추첨 카드) — 기본 상태(애니메이션 없음)가 앞면이라
+           reduced-motion 에서 animation:none 만으로 완성 상태가 된다 */
+        .chip-outer { perspective: 700px; animation: chipIn 0.4s ease-out both; }
+        @keyframes chipIn { from { opacity: 0; transform: translateY(22px); } }
+        .chip-inner {
+          transform-style: preserve-3d;
+          animation: chipFlip 0.6s cubic-bezier(0.3, 0.8, 0.3, 1) both;
         }
+        @keyframes chipFlip { from { transform: rotateY(180deg); } to { transform: rotateY(0deg); } }
+        .chip-face { backface-visibility: hidden; }
+        .chip-back { transform: rotateY(180deg); }
+        /* 추첨 카드 — 셔플 경로 4벌 (교차하며 섞이는 인상). 카드 폭(lg w-36=144px+간격)
+           기준 픽셀이라 배치가 크게 바뀌면 함께 손봐야 한다 */
+        .draw-outer { perspective: 700px; }
+        @keyframes drawShuf0 { 0% { transform: translateX(340px); } 45% { transform: translateX(-140px); } 100% { transform: none; } }
+        @keyframes drawShuf1 { 0% { transform: translateX(-120px); } 45% { transform: translateX(220px); } 100% { transform: none; } }
+        @keyframes drawShuf2 { 0% { transform: translateX(120px); } 45% { transform: translateX(-220px); } 100% { transform: none; } }
+        @keyframes drawShuf3 { 0% { transform: translateX(-340px); } 45% { transform: translateX(140px); } 100% { transform: none; } }
+        .draw-name { animation: rise 0.5s ease-out both; }
         .vs-backdrop { pointer-events: none; animation: backdropIn 0.9s ease-out both; }
         @keyframes backdropIn { from { opacity: 0; } }
         .vs-glow { animation: glowBreathe 4s ease-in-out infinite; }
@@ -631,8 +757,10 @@ export default function ViewerPage() {
         }
         @keyframes beamShimmer { 50% { opacity: 0.55; } }
         @media (prefers-reduced-motion: reduce) {
-          .live-pulse, .card-reveal, .champion-glow, .champion-rise, .champion-float, .vote-chip,
-          .vs-backdrop, .vs-glow, .vs-beam { animation: none; }
+          /* !important: 추첨 카드의 셔플은 인라인 animation 이라 클래스만으로는 못 끈다 */
+          .live-pulse, .card-reveal, .champion-glow, .champion-rise, .champion-float,
+          .chip-outer, .chip-inner, .draw-outer, .draw-name,
+          .vs-backdrop, .vs-glow, .vs-beam { animation: none !important; }
         }
       `}</style>
 
@@ -667,14 +795,16 @@ export default function ViewerPage() {
               </p>
             </div>
           </div>
-        ) : sequence ? null : (
+        ) : sequence || drawSeq ? null : (
           <p className="text-sm font-bold text-white/30">다음 경기를 준비 중입니다</p>
         )}
       </header>
 
-      {/* 본문 우선순위: 공개 시퀀스 > live 대결 포커스 > 대진표 (§6.1) */}
+      {/* 본문 우선순위: 공개 시퀀스 > 추첨 시퀀스 > live 대결 포커스 > 대진표 (§6.1) */}
       {sequence ? (
         <RevealSequence state={state} match={sequence} />
+      ) : drawSeq ? (
+        <DrawSequence state={state} semis={drawSeq} />
       ) : live ? (
         <FocusLive state={state} match={live} />
       ) : (
