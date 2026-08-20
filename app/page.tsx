@@ -728,9 +728,10 @@ export default function ViewerPage() {
         </>
       )}
 
+      {/* 부스 투표 안내는 제거 (8/20 확정: 부스 투표 안 함) */}
       <footer className="relative z-10 mt-4 flex items-center justify-between text-[11px] text-white/22">
         <span>각 경기 종료 후 즉시 발표</span>
-        <span>부스 투표 8/28(목) 23:59까지</span>
+        <span>2026 LIKELION UNIV. 14TH HACKATHON</span>
       </footer>
 
       {/* 우승 테이크오버는 결선 공개 시퀀스가 끝난 뒤에 등장 */}
