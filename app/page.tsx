@@ -14,7 +14,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { CARD_RADIUS, CharacterArt, SchoolTag, Wordmark } from '@/components/ui';
+import { CARD_RADIUS, CharacterArt, SchoolTag, TRACK_COLORS, Wordmark } from '@/components/ui';
+import universityLogos from '@/lib/universityLogos';
 import { winningTeamId, type Match, type Team } from '@/lib/tournament';
 
 type PublicState = { teams: Team[]; matches: Match[]; rev: number };
@@ -735,9 +736,14 @@ function ChampionTakeover({ state, final }: { state: PublicState; final: Match }
           <div className="champ-beam champ-beam--r" />
         </div>
 
+        {/* L8 HUD — 상단 레일 (원본 rail-top) */}
+        <div className="champ-rail font-en" aria-hidden>
+          2026 LIKELION UNIV. 14TH HACKATHON
+        </div>
+
         {/* 중앙 — CHAMPION → 카드 → 팀명 → 소속 */}
         <div className="relative flex h-full flex-col items-center justify-center">
-          <div className="champ-crown relative flex items-center gap-5">
+          <div className="champ-crown relative flex items-center">
             <span className="champ-rule" aria-hidden />
             <span className="champ-word font-display" role="text" aria-label="CHAMPION">
               {[...'CHAMPION'].map((ch, i) => (
@@ -780,8 +786,23 @@ function ChampionTakeover({ state, final }: { state: PublicState; final: Match }
               {name}
             </h2>
           </div>
+          {/* 소속 — 원본 meta 구성 그대로 (엠블럼 + 학교명 + 구분점 + 태그).
+              태그 자리는 트랙명·트랙 컬러 — 원본의 tag/tagColor 를 우리 데이터로 채운 것 */}
           <div className="champ-meta">
-            {team && <SchoolTag school={team.school} track={team.track} size="lg" />}
+            {team && (
+              <>
+                {universityLogos[team.school] && (
+                  <span className="champ-emblem">
+                    <Image src={universityLogos[team.school]} alt="" fill sizes="34px" className="object-contain p-0.5" />
+                  </span>
+                )}
+                <span className="champ-univ">{team.school}</span>
+                <span className="champ-dot" style={{ background: TRACK_COLORS[team.track] }} aria-hidden />
+                <span className="champ-org font-en" style={{ color: TRACK_COLORS[team.track] }}>
+                  {team.track}
+                </span>
+              </>
+            )}
           </div>
         </div>
 
@@ -920,8 +941,9 @@ export default function ViewerPage() {
             radial-gradient(46% 46% at 50% 50%, rgba(236,108,1,0.3) 0%, rgba(236,108,1,0.1) 42%, transparent 72%),
             radial-gradient(80% 62% at 50% 58%, rgba(236,108,1,0.1) 0%, transparent 70%);
           opacity: 0;
-          animation: champFadeIn 1.5s var(--eo) var(--tc) both, champBreathe 5.2s ease-in-out 2.4s infinite;
+          animation: champBloomIn 1.5s var(--eo) var(--tc) both, champBreathe 5.2s ease-in-out 2.4s infinite;
         }
+        @keyframes champBloomIn { from { opacity: 0.2; } to { opacity: 1; } }
         @keyframes champBreathe { 50% { filter: brightness(1.22); } }
         .champ-rays {
           position: absolute; left: 50%; top: 50%; translate: -50% -50%;
@@ -999,7 +1021,16 @@ export default function ViewerPage() {
           animation: champPoolIn 1.1s var(--eo) calc(var(--tc) + 0.06s) forwards, champBreathe 5.2s ease-in-out 2.4s infinite;
         }
         @keyframes champPoolIn { from { opacity: 0; transform: scaleX(0.3); } to { opacity: 1; transform: scaleX(1); } }
-        .champ-crown { margin-bottom: calc(var(--cardw) * 0.146); }
+        .champ-rail {
+          position: absolute;
+          top: calc(var(--cardw) * 0.193); left: calc(var(--cardw) * 0.28);
+          font-size: calc(var(--cardw) * 0.042); font-weight: 600;
+          letter-spacing: 0.18em; color: rgba(245,239,230,0.5);
+          opacity: 0; pointer-events: none;
+          animation: champRailIn 0.9s ease-out 0.44s both;
+        }
+        @keyframes champRailIn { from { opacity: 0.45; } to { opacity: 1; } }
+        .champ-crown { margin-bottom: calc(var(--cardw) * 0.146); gap: calc(var(--cardw) * 0.0573); }
         .champ-crown::before {
           content: ''; position: absolute; left: 50%; top: 50%; translate: -50% -50%;
           width: calc(var(--cardw) * 1.09); height: calc(var(--cardw) * 0.27); border-radius: 50%;
@@ -1076,11 +1107,27 @@ export default function ViewerPage() {
         }
         @keyframes champWipe { to { clip-path: inset(0 0 0 0); } }
         .champ-meta {
+          display: flex; align-items: center; gap: calc(var(--cardw) * 0.036);
           margin-top: 14px; opacity: 0; transform: translateY(16px);
-          filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5));
           animation: champRise 0.7s var(--eo) var(--tm) forwards;
         }
         @keyframes champRise { to { opacity: 1; transform: translateY(0); } }
+        .champ-emblem {
+          position: relative; flex: none; overflow: hidden;
+          width: calc(var(--cardw) * 0.0885); height: calc(var(--cardw) * 0.0885);
+          border-radius: 50%; background: rgba(255,255,255,0.95);
+          border: 1px solid rgba(245,239,230,0.28);
+        }
+        .champ-univ {
+          font-weight: 700; font-size: calc(var(--cardw) * 0.078);
+          color: #f5efe6; letter-spacing: -0.02em;
+          text-shadow: 0 1px 2px rgba(0,0,0,0.55), 0 2px 9px rgba(0,0,0,0.38);
+        }
+        .champ-dot { width: calc(var(--cardw) * 0.013); height: calc(var(--cardw) * 0.013); border-radius: 50%; flex: none; }
+        .champ-org {
+          font-weight: 700; font-size: calc(var(--cardw) * 0.057); letter-spacing: 0.16em;
+          text-shadow: 0 1px 2px rgba(0,0,0,0.55), 0 2px 9px rgba(0,0,0,0.38);
+        }
         .champ-grain {
           position: absolute; inset: -120px; pointer-events: none; opacity: 0.05;
           background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
