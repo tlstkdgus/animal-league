@@ -587,37 +587,210 @@ function DrawSequence({ state, semis }: { state: PublicState; semis: [Match, Mat
 }
 
 // ------------------------------------------------------------
-// 우승 연출
+// 우승 연출 — 디자이너 무대 연출 이식 (docs/championstage2.0.html, 2026-08-21)
 // ------------------------------------------------------------
 
+/** 카드 임팩트 시점(ms) — CSS 의 --tc 와 같은 값이어야 한다 (컨페티 발사 기준). */
+const CHAMP_IMPACT_MS = 560;
+
+/**
+ * 우승 테이크오버 — 카드 슬램 → CHAMPION 레터 드롭 → 팀명 와이프 → 컨페티.
+ *
+ * 원본은 1920×1080 고정 좌표계에 scale 만 거는 무대 전용 구조인데, 이 화면은
+ * 참가자 폰도 대상이라(명세 §6.1) 고정 스테이지 대신 반응형으로 옮겼다:
+ * 모든 이펙트 치수를 카드 폭(--cardw) 배수로 묶어 어느 화면에서도 비율이 유지된다.
+ * 카드 안쪽은 등록된 완성 카드 PNG 로 통째로 교체하는 방식 (디자이너 인계 메모 §6) —
+ * 부유·글로우·포일 스윕 등 바깥 연출은 그대로 둔다.
+ */
 function ChampionTakeover({ state, final }: { state: PublicState; final: Match }) {
   const index = winningTeamId(final);
   const team = teamAt(state, index);
+  const fxRef = useRef<HTMLCanvasElement | null>(null);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+
+  // 컨페티 — 마운트 1회 재생. 내부 좌표는 높이 1080 고정(원본 튜닝값 유지),
+  // 폭만 화면 비율을 따른다. 발사 원점은 카드 DOM 실측 — 레이아웃이 달라도 정중앙.
+  useEffect(() => {
+    const cv = fxRef.current;
+    if (!cv || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const cx = cv.getContext('2d');
+    if (!cx) return;
+
+    const H = 1080;
+    const fit = () => {
+      cv.width = Math.max(1, Math.round((innerWidth / innerHeight) * H));
+      cv.height = H;
+    };
+    fit();
+    addEventListener('resize', fit);
+
+    const PALETTE = ['#EC6C01', '#FFB25E', '#F0A93B', '#F5EFE6', '#5A4D9B', '#FFD9A8'];
+    type Confetto = {
+      x: number; y: number; vx: number; vy: number; w: number; h: number;
+      rot: number; vr: number; flip: number; vf: number; c: string;
+    };
+    type Spark = { x: number; y: number; vx: number; vy: number; life: number; c: string };
+    const confetti: Confetto[] = [];
+    const sparks: Spark[] = [];
+
+    const fireConfetti = (n: number, ox: number, oy: number, from: number, to: number, power: number) => {
+      for (let i = 0; i < n; i++) {
+        const a = from + Math.random() * (to - from);
+        const v = power * (0.55 + Math.random() * 0.75);
+        confetti.push({
+          x: ox + (Math.random() - 0.5) * 130, y: oy + (Math.random() - 0.5) * 90,
+          vx: Math.cos(a) * v, vy: Math.sin(a) * v,
+          w: 7 + Math.random() * 11, h: 10 + Math.random() * 16,
+          rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 0.34,
+          flip: Math.random() * 6.28, vf: 0.09 + Math.random() * 0.16,
+          c: PALETTE[(Math.random() * PALETTE.length) | 0],
+        });
+      }
+    };
+    const fireSparks = (n: number, ox: number, oy: number) => {
+      for (let i = 0; i < n; i++) {
+        const a = Math.random() * 6.28, v = 6 + Math.random() * 22;
+        sparks.push({ x: ox, y: oy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 1, c: Math.random() < 0.5 ? '#FFB25E' : '#EC6C01' });
+      }
+    };
+
+    let raf = 0;
+    let t0 = performance.now();
+    const loop = (now: number) => {
+      const dt = Math.min((now - t0) / 16.67, 3);
+      t0 = now;
+      cx.clearRect(0, 0, cv.width, H);
+
+      for (let i = confetti.length - 1; i >= 0; i--) {
+        const c = confetti[i];
+        c.vy += 0.19 * dt; c.vx *= 0.9955; c.vy *= 0.995;
+        c.x += c.vx * dt; c.y += c.vy * dt;
+        c.rot += c.vr * dt; c.flip += c.vf * dt;
+        cx.save();
+        cx.translate(c.x, c.y);
+        cx.rotate(c.rot);
+        cx.scale(1, Math.cos(c.flip));
+        cx.fillStyle = c.c;
+        cx.globalAlpha = 0.94;
+        cx.fillRect(-c.w / 2, -c.h / 2, c.w, c.h);
+        cx.restore();
+        if (c.y > H + 100) confetti.splice(i, 1);
+      }
+
+      cx.globalCompositeOperation = 'lighter';
+      for (let i = sparks.length - 1; i >= 0; i--) {
+        const s = sparks[i];
+        s.x += s.vx * dt; s.y += s.vy * dt;
+        s.vx *= 0.93; s.vy = s.vy * 0.93 + 0.22 * dt;
+        s.life -= 0.022 * dt;
+        if (s.life <= 0) { sparks.splice(i, 1); continue; }
+        cx.globalAlpha = s.life;
+        cx.strokeStyle = s.c; cx.lineWidth = 2.4; cx.lineCap = 'round';
+        cx.beginPath();
+        cx.moveTo(s.x, s.y);
+        cx.lineTo(s.x - s.vx * 2.2, s.y - s.vy * 2.2);
+        cx.stroke();
+      }
+      cx.globalAlpha = 1;
+      cx.globalCompositeOperation = 'source-over';
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+
+    // 발사 시점·좌표·수량은 원본 그대로 (championstage2.0.html §4 연출 재생)
+    const timers = [
+      setTimeout(() => {
+        const r = cardRef.current?.getBoundingClientRect();
+        const ox = r ? ((r.left + r.width / 2) / innerWidth) * cv.width : cv.width / 2;
+        const oy = r ? ((r.top + r.height / 2) / innerHeight) * H : H * 0.46;
+        fireSparks(46, ox, oy);
+        fireConfetti(90, ox, oy + 24, -Math.PI, 0, 17); // 카드 중앙 폭발
+      }, CHAMP_IMPACT_MS),
+      setTimeout(() => {
+        fireConfetti(104, 40, H + 20, -1.52, -0.44, 31); // 좌측 캐논
+        fireConfetti(104, cv.width - 40, H + 20, -2.7, -1.62, 31); // 우측 캐논
+      }, CHAMP_IMPACT_MS + 140),
+      setTimeout(() => fireConfetti(70, cv.width / 2, -40, 0.35, 2.79, 7), CHAMP_IMPACT_MS + 620), // 상단 흩날림
+    ];
+
+    return () => {
+      cancelAnimationFrame(raf);
+      timers.forEach(clearTimeout);
+      removeEventListener('resize', fit);
+    };
+  }, []);
+
   if (index === null) return null;
+  const name = teamName(state, index);
 
   return (
-    <div className="champion fixed inset-0 z-50 grid place-items-center overflow-hidden bg-(--bg)">
-      <div className="champion-glow absolute h-[120vmin] w-[120vmin] rounded-full" aria-hidden />
-      <div className="relative z-10 flex flex-col items-center px-6 text-center">
-        <p className="champion-rise font-display mb-6 text-2xl text-(--orange) md:text-4xl">
-          CHAMPION
-        </p>
-        <div className="champion-rise" style={{ animationDelay: '0.25s' }}>
-          <CharacterArt
-            characterKey={team?.character ?? null}
-            className="champion-float aspect-2/3 w-48 shadow-[0_0_80px_rgba(236,108,1,0.35)] md:w-72"
-            sizes="(min-width: 768px) 288px, 192px"
-          />
+    <div className="champ-stage fixed inset-0 z-50 overflow-hidden">
+      <div className="champ-shake absolute inset-0">
+        {/* L0 바탕 + 블룸 / L1 회전 광선 + 스포트라이트 빔 */}
+        <div className="champ-ground absolute inset-0" aria-hidden />
+        <div className="champ-bloom absolute inset-0" aria-hidden />
+        <div className="champ-rays" aria-hidden />
+        <div className="absolute inset-0 overflow-hidden" aria-hidden>
+          <div className="champ-beam champ-beam--l" />
+          <div className="champ-beam champ-beam--r" />
         </div>
-        <h2
-          className="champion-rise mt-8 max-w-full text-4xl font-extrabold tracking-tight md:text-6xl"
-          style={{ animationDelay: '0.5s', textWrap: 'balance' }}
-        >
-          {teamName(state, index)}
-        </h2>
-        <div className="champion-rise mt-4" style={{ animationDelay: '0.65s' }}>
-          {team && <SchoolTag school={team.school} track={team.track} size="lg" />}
+
+        {/* 중앙 — CHAMPION → 카드 → 팀명 → 소속 */}
+        <div className="relative flex h-full flex-col items-center justify-center">
+          <div className="champ-crown relative flex items-center gap-5">
+            <span className="champ-rule" aria-hidden />
+            <span className="champ-word font-display" role="text" aria-label="CHAMPION">
+              {[...'CHAMPION'].map((ch, i) => (
+                <i key={i} style={{ animationDelay: `${1.04 + i * 0.038}s` }} aria-hidden>
+                  {ch}
+                </i>
+              ))}
+            </span>
+            <span className="champ-rule champ-rule--r" aria-hidden />
+          </div>
+
+          <div ref={cardRef} className="champ-card-wrap relative">
+            {/* 카드 뒤 이펙트 — 카드 중심 기준 정렬 (아우라 링 · 충격파 · 조명 풀 · 글로우) */}
+            <div className="champ-aura" aria-hidden>
+              <span className="champ-ring champ-ring--outer" />
+              <span className="champ-ring champ-ring--inner" />
+            </div>
+            <span className="champ-wave" aria-hidden />
+            <span className="champ-wave" aria-hidden />
+            <span className="champ-wave" aria-hidden />
+            <div className="champ-pool" aria-hidden />
+            <div className="champ-card-glow" aria-hidden />
+            <div className="champ-card relative h-full w-full overflow-hidden">
+              {team?.character ? (
+                <Image src={`/characters/${team.character}.png`} alt="" fill sizes="384px" className="object-cover" />
+              ) : (
+                <div className="grid h-full w-full place-items-center text-2xl text-white/25">?</div>
+              )}
+              <span className="champ-sheen" aria-hidden />
+              <span className="champ-foil" aria-hidden />
+            </div>
+          </div>
+
+          <div className="champ-name-wrap max-w-full overflow-hidden px-6">
+            {/* 원본은 nowrap 75px 인데 실운영 팀명은 최대 20자 — 줄바꿈 허용 + 길이 조건 축소 */}
+            <h2
+              className="champ-name text-center font-extrabold tracking-tight"
+              style={{ fontSize: `calc(var(--cardw) * ${name.length > 10 ? 0.125 : 0.195})`, textWrap: 'balance' }}
+            >
+              {name}
+            </h2>
+          </div>
+          <div className="champ-meta">
+            {team && <SchoolTag school={team.school} track={team.track} size="lg" />}
+          </div>
         </div>
+
+        {/* L7 컨페티 / L9 그레인 · 비네트 / L10 스캔 · 플래시 */}
+        <canvas ref={fxRef} className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden />
+        <div className="champ-grain" aria-hidden />
+        <div className="champ-vignette absolute inset-0" aria-hidden />
+        <div className="champ-scan" aria-hidden />
+        <div className="champ-flash absolute inset-0" aria-hidden />
       </div>
     </div>
   );
@@ -716,15 +889,225 @@ export default function ViewerPage() {
           40% { transform: scale(1.015); box-shadow: 0 0 40px rgba(236,108,1,0.4); }
           100% { transform: scale(1); box-shadow: 0 0 0 rgba(236,108,1,0); }
         }
-        .champion-glow {
-          background: radial-gradient(circle, rgba(236,108,1,0.28) 0%, rgba(236,108,1,0.08) 40%, transparent 70%);
-          animation: glowBreathe 4s ease-in-out infinite;
-        }
         @keyframes glowBreathe { 50% { opacity: 0.6; transform: scale(1.08); } }
         .champion-rise { animation: rise 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
         @keyframes rise { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: none; } }
-        .champion-float { animation: floaty 5s ease-in-out infinite; }
-        @keyframes floaty { 50% { transform: translateY(-12px); } }
+
+        /* ── 우승 테이크오버 (디자이너 무대 연출 이식 — docs/championstage2.0.html) ──
+           원본은 1920×1080 고정 px 좌표계. 이 화면은 폰도 대상이라 이펙트 치수를
+           전부 카드 폭(--cardw) 배수로 환산했다 — 카드가 줄면 링·빔·풀도 같이 준다.
+           타임라인(--tc 카드 임팩트 등)은 원본 값 그대로. --tc 를 바꾸면
+           CHAMP_IMPACT_MS 도 같이 바꿔야 한다 (컨페티 발사 시점). */
+        .champ-stage {
+          --cardw: clamp(190px, 40vmin, 384px);
+          --cardh: calc(var(--cardw) * 1.484);
+          --tsn: 0.1s; --tf: 0.52s; --tc: 0.56s; --tch: 1.04s; --tn: 1.5s; --tm: 1.92s;
+          --eo: cubic-bezier(0.16, 1, 0.3, 1);
+          --es: cubic-bezier(0.2, 1.4, 0.35, 1);
+          --ember: #ffb25e;
+          background: var(--bg);
+        }
+        .champ-shake { animation: champShake 0.34s steps(2, end) var(--tc); }
+        @keyframes champShake {
+          0% { transform: translate(0, 0); } 14% { transform: translate(-9px, 5px); }
+          28% { transform: translate(8px, -6px); } 42% { transform: translate(-6px, -4px); }
+          56% { transform: translate(5px, 6px); } 70% { transform: translate(-3px, 2px); }
+          84% { transform: translate(2px, -2px); } 100% { transform: translate(0, 0); }
+        }
+        .champ-ground { background: radial-gradient(120% 90% at 50% 8%, #141110 0%, var(--bg) 62%); }
+        .champ-bloom {
+          background:
+            radial-gradient(46% 46% at 50% 50%, rgba(236,108,1,0.3) 0%, rgba(236,108,1,0.1) 42%, transparent 72%),
+            radial-gradient(80% 62% at 50% 58%, rgba(236,108,1,0.1) 0%, transparent 70%);
+          opacity: 0;
+          animation: champFadeIn 1.5s var(--eo) var(--tc) both, champBreathe 5.2s ease-in-out 2.4s infinite;
+        }
+        @keyframes champBreathe { 50% { filter: brightness(1.22); } }
+        .champ-rays {
+          position: absolute; left: 50%; top: 50%; translate: -50% -50%;
+          width: calc(var(--cardw) * 6.25); height: calc(var(--cardw) * 6.25);
+          background: repeating-conic-gradient(from 0deg at 50% 50%, rgba(255,178,94,0.16) 0deg 0.8deg, transparent 0.8deg 16deg);
+          mask-image: radial-gradient(circle closest-side, transparent 21.7%, rgba(0,0,0,0.9) 43.3%, transparent 81.7%);
+          filter: blur(3px);
+          opacity: 0;
+          animation: champRaysIn 1.6s var(--eo) calc(var(--tc) + 0.1s) both, champSpin 96s linear 1s infinite;
+        }
+        @keyframes champRaysIn { from { opacity: 0; } to { opacity: 0.4; } }
+        @keyframes champSpin { to { rotate: 360deg; } }
+        @keyframes champSpinRev { to { rotate: -360deg; } }
+        .champ-beam {
+          position: absolute; top: -20vh; left: 50%;
+          width: calc(var(--cardw) * 1.72); height: 140vh;
+          background: linear-gradient(180deg, rgba(255,206,150,0.36) 0%, rgba(255,170,84,0.18) 26%,
+            rgba(236,108,1,0.075) 58%, rgba(236,108,1,0.02) 80%, transparent 95%);
+          clip-path: polygon(46% 0, 54% 0, 100% 100%, 0% 100%);
+          filter: blur(40px);
+          transform-origin: 50% 0;
+          opacity: 0;
+        }
+        .champ-beam--l {
+          margin-left: calc(var(--cardw) * -2.11); rotate: -29.5deg;
+          animation: champFadeIn 1.3s var(--eo) calc(var(--tc) + 0.12s) both, champSwayL 13s ease-in-out calc(var(--tc) + 1.4s) infinite;
+        }
+        .champ-beam--r {
+          margin-left: calc(var(--cardw) * 0.39); rotate: 29.5deg;
+          animation: champFadeIn 1.3s var(--eo) calc(var(--tc) + 0.2s) both, champSwayR 16s ease-in-out calc(var(--tc) + 1.4s) infinite;
+        }
+        @keyframes champSwayL { 0%, 100% { rotate: -29.5deg; } 50% { rotate: -32.5deg; } }
+        @keyframes champSwayR { 0%, 100% { rotate: 29.5deg; } 50% { rotate: 32.5deg; } }
+        @keyframes champFadeIn { to { opacity: 1; } }
+        .champ-aura {
+          position: absolute; left: 50%; top: 50%; translate: -50% -50%;
+          filter: drop-shadow(0 0 18px rgba(236,108,1,0.55));
+        }
+        .champ-ring { position: absolute; left: 50%; top: 50%; translate: -50% -50%; border-radius: 50%; opacity: 0; }
+        /* 링 마스크는 원본 px 반지름의 closest-side % 환산 — 크기가 줄어도 띠가 유지된다 */
+        .champ-ring--outer {
+          width: calc(var(--cardw) * 2.448); height: calc(var(--cardw) * 2.448);
+          background: conic-gradient(from 0deg, transparent 0 6%, var(--orange) 15%, var(--ember) 21%,
+            transparent 32% 62%, var(--orange) 73%, transparent 86% 100%);
+          mask-image: radial-gradient(circle closest-side, transparent 98%, #000 99% 99.9%, transparent 100%);
+          animation: champRingOuterIn 1.2s ease-out var(--tch) forwards, champSpin 22s linear infinite;
+        }
+        .champ-ring--inner {
+          width: calc(var(--cardw) * 1.823); height: calc(var(--cardw) * 1.823);
+          background: conic-gradient(from 180deg, transparent 0 10%, var(--ember) 20%, transparent 34% 60%,
+            var(--orange) 70%, transparent 84% 100%);
+          mask-image: radial-gradient(circle closest-side, transparent 97.5%, #000 98.6% 100%, transparent 100%);
+          animation: champRingInnerIn 1.2s ease-out calc(var(--tch) + 0.12s) forwards, champSpinRev 15s linear infinite;
+        }
+        @keyframes champRingOuterIn { to { opacity: 0.55; } }
+        @keyframes champRingInnerIn { to { opacity: 0.4; } }
+        .champ-wave {
+          position: absolute; left: 50%; top: 50%; translate: -50% -50%;
+          width: calc(var(--cardw) * 0.885); height: calc(var(--cardw) * 0.885);
+          border-radius: 50%; border: 3px solid var(--ember); opacity: 0;
+          animation: champBurst 1.05s var(--eo) forwards;
+        }
+        .champ-wave:nth-of-type(1) { animation-delay: var(--tc); }
+        .champ-wave:nth-of-type(2) { animation-delay: calc(var(--tc) + 0.09s); border-color: var(--orange); }
+        .champ-wave:nth-of-type(3) { animation-delay: calc(var(--tc) + 0.19s); border-width: 2px; }
+        @keyframes champBurst {
+          0% { opacity: 0.9; transform: scale(0.5); border-width: 6px; }
+          100% { opacity: 0; transform: scale(4.6); border-width: 1px; }
+        }
+        .champ-pool {
+          position: absolute; left: 50%; top: calc(100% + var(--cardw) * 0.19); translate: -50% -50%;
+          width: calc(var(--cardw) * 2.135); height: calc(var(--cardw) * 0.495);
+          background: radial-gradient(50% 50% at 50% 50%, rgba(255,178,94,0.42) 0%, rgba(236,108,1,0.18) 38%, transparent 72%);
+          filter: blur(14px); opacity: 0;
+          animation: champPoolIn 1.1s var(--eo) calc(var(--tc) + 0.06s) forwards, champBreathe 5.2s ease-in-out 2.4s infinite;
+        }
+        @keyframes champPoolIn { from { opacity: 0; transform: scaleX(0.3); } to { opacity: 1; transform: scaleX(1); } }
+        .champ-crown { margin-bottom: calc(var(--cardw) * 0.146); }
+        .champ-crown::before {
+          content: ''; position: absolute; left: 50%; top: 50%; translate: -50% -50%;
+          width: calc(var(--cardw) * 1.09); height: calc(var(--cardw) * 0.27); border-radius: 50%;
+          background: radial-gradient(50% 50% at 50% 50%, rgba(236,108,1,0.22), transparent 70%);
+          filter: blur(22px); opacity: 0; z-index: -1;
+          animation: champFadeIn 0.9s ease-out calc(var(--tch) + 0.2s) forwards;
+        }
+        .champ-rule {
+          width: 0; height: 2px; flex: none;
+          background: linear-gradient(90deg, transparent, var(--orange));
+          animation: champRuleGrow 0.9s var(--eo) calc(var(--tch) + 0.28s) forwards;
+        }
+        .champ-rule--r { background: linear-gradient(270deg, transparent, var(--orange)); }
+        @keyframes champRuleGrow { to { width: calc(var(--cardw) * 0.27); } }
+        .champ-word {
+          display: flex; line-height: 1;
+          font-size: calc(var(--cardw) * 0.12);
+          color: var(--orange);
+          text-shadow: 0 0 16px rgba(236,108,1,0.34), 0 0 44px rgba(236,108,1,0.14);
+        }
+        .champ-word i {
+          display: inline-block; font-style: normal;
+          opacity: 0; transform: translateY(-52px); filter: blur(9px);
+          animation: champDrop 0.58s var(--es) forwards;
+        }
+        @keyframes champDrop { to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+        .champ-card-wrap { width: var(--cardw); height: var(--cardh); perspective: 1400px; }
+        .champ-card-glow {
+          position: absolute; inset: calc(var(--cardw) * -0.234) calc(var(--cardw) * -0.286);
+          background: radial-gradient(50% 50% at 50% 50%, rgba(236,108,1,0.55), rgba(236,108,1,0.14) 46%, transparent 72%);
+          filter: blur(30px); opacity: 0;
+          animation: champFadeIn 0.9s ease-out var(--tc) forwards, champBreathe 5.2s ease-in-out 2.4s infinite;
+        }
+        .champ-card {
+          border-radius: 5.7% / 3.8%; /* 카드 에셋 베이크 곡률 (ui.tsx CARD_RADIUS) */
+          border: 1px solid rgba(255,255,255,0.16);
+          box-shadow: 0 40px 90px rgba(0,0,0,0.72), 0 0 0 1px rgba(255,178,94,0.14), 0 0 70px rgba(236,108,1,0.34);
+          transform-style: preserve-3d;
+          opacity: 0;
+          animation: champSlam 0.78s var(--es) var(--tc) forwards, champFloat 6.4s ease-in-out 2.2s infinite;
+        }
+        @keyframes champSlam {
+          0% { opacity: 0; transform: scale(1.62) rotateX(14deg); filter: blur(22px); }
+          55% { opacity: 1; }
+          100% { opacity: 1; transform: scale(1) rotateX(0deg); filter: blur(0); }
+        }
+        @keyframes champFloat {
+          0%, 100% { transform: translateY(0) rotateZ(0deg) rotateY(0deg); }
+          25% { transform: translateY(-11px) rotateZ(-1.1deg) rotateY(3.5deg); }
+          50% { transform: translateY(-4px) rotateZ(0deg) rotateY(0deg); }
+          75% { transform: translateY(-13px) rotateZ(1.1deg) rotateY(-3.5deg); }
+        }
+        .champ-sheen {
+          position: absolute; inset: 0; pointer-events: none;
+          background: radial-gradient(120% 80% at 12% 0%, rgba(255,255,255,0.16), transparent 58%);
+        }
+        .champ-foil {
+          position: absolute; top: -40%; left: -70%; width: 55%; height: 180%;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.42), rgba(255,214,160,0.3), transparent);
+          transform: rotate(18deg); mix-blend-mode: screen; pointer-events: none;
+          opacity: 0;
+          animation: champFoil 5.4s ease-in-out 2.6s infinite;
+        }
+        @keyframes champFoil {
+          0% { left: -70%; opacity: 0; } 8% { opacity: 1; }
+          34% { left: 120%; opacity: 0; } 100% { left: 120%; opacity: 0; }
+        }
+        .champ-name-wrap { margin-top: calc(var(--cardw) * 0.078); }
+        .champ-name {
+          color: #f5efe6; line-height: 1.14; letter-spacing: -0.035em;
+          text-shadow: 0 1px 2px rgba(0,0,0,0.55), 0 2px 10px rgba(0,0,0,0.42), 0 4px 26px rgba(0,0,0,0.28);
+          clip-path: inset(0 100% 0 0);
+          animation: champWipe 0.66s var(--eo) var(--tn) forwards;
+        }
+        @keyframes champWipe { to { clip-path: inset(0 0 0 0); } }
+        .champ-meta {
+          margin-top: 14px; opacity: 0; transform: translateY(16px);
+          filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5));
+          animation: champRise 0.7s var(--eo) var(--tm) forwards;
+        }
+        @keyframes champRise { to { opacity: 1; transform: translateY(0); } }
+        .champ-grain {
+          position: absolute; inset: -120px; pointer-events: none; opacity: 0.05;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+          animation: champGrain 0.6s steps(4, end) infinite;
+        }
+        @keyframes champGrain {
+          0% { transform: translate(0, 0); } 25% { transform: translate(-38px, 22px); }
+          50% { transform: translate(26px, -30px); } 75% { transform: translate(-18px, -14px); }
+          100% { transform: translate(0, 0); }
+        }
+        .champ-vignette {
+          pointer-events: none;
+          background: radial-gradient(78% 74% at 50% 48%, transparent 44%, rgba(0,0,0,0.62) 100%);
+        }
+        .champ-flash { background: #fff; opacity: 0; pointer-events: none; animation: champFlash 0.3s ease-out var(--tf) forwards; }
+        @keyframes champFlash { 0% { opacity: 0; } 10% { opacity: 0.9; } 100% { opacity: 0; } }
+        .champ-scan {
+          position: absolute; left: 0; top: 50%; height: 2px; width: 0;
+          background: linear-gradient(90deg, transparent, var(--ember), transparent);
+          box-shadow: 0 0 22px var(--orange); pointer-events: none; opacity: 0;
+          animation: champScan 0.46s var(--eo) var(--tsn) forwards;
+        }
+        @keyframes champScan {
+          0% { width: 0; left: 50%; opacity: 1; }
+          60% { width: 100%; left: 0; opacity: 1; }
+          100% { width: 100%; left: 0; opacity: 0; }
+        }
         /* 카드 플립 공통 (공개 칩 · 추첨 카드) — 기본 상태(애니메이션 없음)가 앞면이라
            reduced-motion 에서 animation:none 만으로 완성 상태가 된다 */
         .chip-outer { perspective: 700px; animation: chipIn 0.4s ease-out both; }
@@ -758,9 +1141,14 @@ export default function ViewerPage() {
         @keyframes beamShimmer { 50% { opacity: 0.55; } }
         @media (prefers-reduced-motion: reduce) {
           /* !important: 추첨 카드의 셔플은 인라인 animation 이라 클래스만으로는 못 끈다 */
-          .live-pulse, .card-reveal, .champion-glow, .champion-rise, .champion-float,
+          .live-pulse, .card-reveal, .champion-rise,
           .chip-outer, .chip-inner, .draw-outer, .draw-name,
           .vs-backdrop, .vs-glow, .vs-beam { animation: none !important; }
+          /* 우승 무대 — 원본의 축소 규칙 그대로: 흔들림·플래시·충격파·포일·그레인만 끄고,
+             페이드 계열(블룸·빔·레터 드롭·와이프)은 유지. 카드는 페이드 등장으로 대체 */
+          .champ-shake, .champ-wave, .champ-flash, .champ-scan, .champ-foil, .champ-grain { animation: none !important; }
+          .champ-card { animation: champFadeIn 0.5s ease-out var(--tc) forwards !important; }
+          .champ-rays, .champ-ring--outer, .champ-ring--inner { animation-name: champFadeIn !important; animation-duration: 0.6s !important; }
         }
       `}</style>
 
