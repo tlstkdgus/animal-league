@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { CARD_RADIUS, CharacterArt, SchoolTag, TRACK_COLORS, Wordmark } from '@/components/ui';
-import { armSfx, playFlip, playShuffle } from '@/lib/sfx';
+import { armSfx, playChips, playFan, playFlip, playImpact, playShuffle } from '@/lib/sfx';
 import universityLogos from '@/lib/universityLogos';
 import { winningTeamId, type Match, type Team } from '@/lib/tournament';
 
@@ -426,6 +426,20 @@ function RevealSequence({ state, match }: { state: PublicState; match: Match }) 
     return () => clearTimeout(timer);
   }, [votes.length]);
 
+  // 시퀀스 도입 소리 — 덱 부채꼴 펼치기. 표가 있어 뒷면 칩이 등장할 때만,
+  // reduced-motion 은 칩 등장 모션이 없으니 소리도 생략 (추첨 셔플과 같은 규칙)
+  useEffect(() => {
+    if (votes.length === 0 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const timer = setTimeout(() => playFan(), 100);
+    return () => clearTimeout(timer);
+  }, [votes.length]);
+
+  // 승자 발표 순간 — 칩 클래터. 백업 모드(표 0건)는 마운트 즉시 발표라 바로 울린다.
+  // 발표는 모션이 아니라 정보라 reduced-motion 에서도 낸다 (플립·셔플과 다른 판단)
+  useEffect(() => {
+    if (showWinner) playChips();
+  }, [showWinner]);
+
   // 모션 축소 환경은 칩이 애니메이션 없이 즉시 다 보이고 animationend 도 오지 않는다
   // — 집계도 즉시 전체 표시 (이벤트만 믿으면 0 에 영원히 머문다).
   // 타이머로 미루는 건 react-hooks/set-state-in-effect (effect 본문 직접 setState 금지)
@@ -720,6 +734,7 @@ function ChampionTakeover({ state, final }: { state: PublicState; final: Match }
         const r = cardRef.current?.getBoundingClientRect();
         const ox = r ? ((r.left + r.width / 2) / innerWidth) * cv.width : cv.width / 2;
         const oy = r ? ((r.top + r.height / 2) / innerHeight) * H : H * 0.46;
+        playImpact(); // 슬램 임팩트 — 화면 흔들림·충격파와 같은 시점
         fireSparks(46, ox, oy);
         fireConfetti(90, ox, oy + 24, -Math.PI, 0, 17); // 카드 중앙 폭발
       }, CHAMP_IMPACT_MS),

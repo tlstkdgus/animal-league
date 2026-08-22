@@ -10,10 +10,14 @@
 
 const FLIP_SOURCES = [1, 2, 3, 4].map((n) => `/sfx/card-place-${n}.ogg`);
 const SHUFFLE_SOURCE = '/sfx/card-shuffle.ogg';
+const FAN_SOURCE = '/sfx/card-fan-1.ogg';
+const CHIPS_SOURCES = [1, 2].map((n) => `/sfx/chips-collide-${n}.ogg`);
 
 let ctx: AudioContext | null = null;
 let flipBuffers: AudioBuffer[] | null = null;
 let shuffleBuffer: AudioBuffer | null = null;
+let fanBuffer: AudioBuffer | null = null;
+let chipsBuffers: AudioBuffer[] | null = null;
 let loadStarted = false;
 let flipIdx = 0;
 
@@ -35,13 +39,17 @@ async function load(c: AudioContext): Promise<void> {
     return c.decodeAudioData(await res.arrayBuffer());
   };
   try {
-    [flipBuffers, shuffleBuffer] = await Promise.all([
+    [flipBuffers, shuffleBuffer, fanBuffer, chipsBuffers] = await Promise.all([
       Promise.all(FLIP_SOURCES.map(decode)),
       decode(SHUFFLE_SOURCE),
+      decode(FAN_SOURCE),
+      Promise.all(CHIPS_SOURCES.map(decode)),
     ]);
   } catch {
     flipBuffers = null;
     shuffleBuffer = null;
+    fanBuffer = null;
+    chipsBuffers = null;
     loadStarted = false; // 폴링 화면이라 다음 armSfx/재생 경로에서 재시도할 여지를 남긴다
   }
 }
@@ -83,6 +91,79 @@ export function playShuffle(durationSec = 2.2): void {
     src.connect(gain).connect(c.destination);
     src.start();
     src.stop(c.currentTime + durationSec);
+  } catch {
+    /* 소리 실패가 화면을 막으면 안 된다 */
+  }
+}
+
+/** 덱 부채꼴 펼치기 — 공개 시퀀스 시작("투표를 공개합니다" + 뒷면 칩 등장)에 1회. */
+export function playFan(): void {
+  const c = context();
+  if (!c || !fanBuffer || c.state !== 'running') return;
+  try {
+    const src = c.createBufferSource();
+    src.buffer = fanBuffer;
+    const gain = c.createGain();
+    gain.gain.value = 0.35; // 도입부 — 멘트를 덮지 않게 낮게
+    src.connect(gain).connect(c.destination);
+    src.start();
+  } catch {
+    /* 소리 실패가 화면을 막으면 안 된다 */
+  }
+}
+
+/** 승자 발표 — 칩 무더기 클래터. 두 샘플을 70ms 겹쳐 한 번의 두툼한 소리로 만든다. */
+export function playChips(): void {
+  const c = context();
+  if (!c || !chipsBuffers || c.state !== 'running') return;
+  try {
+    chipsBuffers.forEach((buf, i) => {
+      const src = c.createBufferSource();
+      src.buffer = buf;
+      const gain = c.createGain();
+      gain.gain.value = 0.55;
+      src.connect(gain).connect(c.destination);
+      src.start(c.currentTime + i * 0.07);
+    });
+  } catch {
+    /* 소리 실패가 화면을 막으면 안 된다 */
+  }
+}
+
+/**
+ * 우승 카드 슬램 임팩트 — 샘플 없이 합성 (서브 사인 드롭 + 로우패스 노이즈 버스트).
+ * 카지노 팩에는 무대 임팩트급 소리가 없어서, 에셋 추가 대신 합성으로 해결했다.
+ */
+export function playImpact(): void {
+  const c = context();
+  if (!c || c.state !== 'running') return;
+  try {
+    const t = c.currentTime;
+    // 서브 붐 — 100Hz → 38Hz 드롭, 0.55초 감쇠
+    const osc = c.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(100, t);
+    osc.frequency.exponentialRampToValueAtTime(38, t + 0.4);
+    const oscGain = c.createGain();
+    oscGain.gain.setValueAtTime(0.7, t);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+    osc.connect(oscGain).connect(c.destination);
+    osc.start(t);
+    osc.stop(t + 0.6);
+    // 타격감 — 0.2초 노이즈 버스트를 로우패스로 둔탁하게
+    const noise = c.createBufferSource();
+    const buf = c.createBuffer(1, Math.ceil(c.sampleRate * 0.2), c.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+    noise.buffer = buf;
+    const lp = c.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 900;
+    const noiseGain = c.createGain();
+    noiseGain.gain.setValueAtTime(0.5, t);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+    noise.connect(lp).connect(noiseGain).connect(c.destination);
+    noise.start(t);
   } catch {
     /* 소리 실패가 화면을 막으면 안 된다 */
   }

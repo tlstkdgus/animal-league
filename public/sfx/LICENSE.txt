@@ -1,4 +1,5 @@
-card-place-1.ogg ~ card-place-4.ogg, card-shuffle.ogg
+card-place-1.ogg ~ card-place-4.ogg, card-shuffle.ogg,
+card-fan-1.ogg, chips-collide-1.ogg ~ chips-collide-2.ogg
 
 출처: Casino Audio (v1.1) by Kenney Vleugels (kenney.nl)
 라이선스: Creative Commons Zero (CC0)
