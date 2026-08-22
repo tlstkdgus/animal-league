@@ -527,6 +527,22 @@ test('공개: voteNames 가 votes 와 같은 순서로 저장된다 (정지 화�
   assert.deepEqual(getMatch(s, 'R1-1').voteNames, ['김', '박', '이']);
 });
 
+test('결선 특례: 공개 즉시 발표 간주 — 표가 있어도 announced, 재발표는 거부 (8/22 큐시트)', () => {
+  let s = drawRound2(afterRound1());
+  s = play(s, 'R2-1', 'A');
+  s = play(s, 'R2-2', 'A');
+  s = setFinal(s);
+  s = revealResult(startMatch(s, 'F'), 'F', 'A', ['A', 'B', 'A', 'A', 'B'], ['김', '박', '이', '최', '정']);
+
+  assert.equal(getMatch(s, 'F').announced, true);
+  assert.equal(isAnnounced(getMatch(s, 'F')), true);
+  expectError('ALREADY_ANNOUNCED', () => announceResult(s, 'F'));
+  // R1·R2 는 특례가 아니다 — 여전히 2단계
+  assert.equal(isAnnounced(getMatch(play(seeded(), 'R1-1', 'A'), 'R1-1')), true); // 표 0건 백업만 즉시
+  const r1 = revealResult(startMatch(seeded(), 'R1-1'), 'R1-1', 'A', ['A']);
+  assert.equal(isAnnounced(getMatch(r1, 'R1-1')), false);
+});
+
 // ------------------------------------------------------------
 // 수동 대진 (8/22) — drawRound2 pairs
 // ------------------------------------------------------------

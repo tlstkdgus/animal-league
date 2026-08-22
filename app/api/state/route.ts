@@ -1,7 +1,8 @@
 // GET /api/state — 공개 스냅샷 (스크린·심사 화면 폴링용).
 //
 // judgeCode / adminPin / judges 는 toPublicState 가 벗겨낸다 (명세 §7).
-// 참가자 수백 명이 3초 폴링하므로 CDN 캐시(s-maxage=2)로 원 서버 부하를 상수로 만든다.
+// CDN 캐시 1초: 원래 참가자 수백 명 폴링 대비 2초였으나, 스크린이 프로젝터 전용이
+// 되면서(8/22) 클라이언트가 소수라 지연 단축을 우선한다 (운영 콘솔 → 스크린 반영).
 // 클라이언트는 rev 가 낮은 스냅샷을 무시할 것 (명세 §4.1).
 
 import { ensureState, toPublicState } from '@/lib/state';
@@ -23,7 +24,7 @@ export async function GET(): Promise<Response> {
       // now: 서버 현재 시각 — 기기 시계 편차 보정용 (lib/clock.ts).
       // CDN 캐시로 낡을 수 있어 클라이언트가 Age 헤더와 함께 쓴다
       { ok: true, ...toPublicState(row), now: Date.now() },
-      { headers: { 'Cache-Control': 'public, s-maxage=2, stale-while-revalidate=8' } },
+      { headers: { 'Cache-Control': 'public, s-maxage=1, stale-while-revalidate=4' } },
     );
   });
 }
