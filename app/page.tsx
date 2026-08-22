@@ -223,7 +223,6 @@ function PairColumn({
   slotLabel,
   slotBg,
   championSlot = false,
-  pairHidden = false,
 }: {
   state: PublicState;
   match: Match;
@@ -233,8 +232,6 @@ function PairColumn({
   slotBg?: string;
   /** 결선 전용 (8/22 저녁): CHAMPION 슬롯 강조 스타일 */
   championSlot?: boolean;
-  /** 추첨 전 결선 열 (8/22 심야): 대기 카드 쌍을 감춘다 — 집결 박스 하나만 남긴다 */
-  pairHidden?: boolean;
 }) {
   const live = match.status === 'live';
   const done = match.status === 'done';
@@ -266,9 +263,7 @@ function PairColumn({
           <span>{slotLabel}</span>
         )}
       </div>
-      {!pairHidden && (
-        <>
-          <div
+                <div
             className="h-4"
             style={{ borderLeft: `2px ${done ? 'solid rgba(236,108,1,0.55)' : 'dashed rgba(255,255,255,0.16)'}` }}
             aria-hidden
@@ -287,8 +282,6 @@ function PairColumn({
             <span className="text-[10px] font-extrabold text-white/25 2xl:text-xs">VS</span>
             <TeamSolo state={state} index={match.b} match={match} side="B" />
           </div>
-        </>
-      )}
     </div>
   );
 }
@@ -1442,7 +1435,8 @@ export default function ViewerPage() {
             하위 두 열 중점이 수치 없이 자동 성립 (8/22 정렬 결정 유지) */}
         <div className="relative mx-auto grid w-fit grid-cols-2 gap-x-7 2xl:gap-x-10">
           {/* 결선 열 — 두 셀에 걸쳐 중앙. CHAMPION 슬롯은 전용 강조 스타일 (8/22 저녁).
-              추첨 전에는 대기 카드 쌍을 감춘다 (8/22 심야 — "집결 박스 하나만").
+              대기 카드 쌍(?카드)은 추첨 전에도 항상 보인다 (8/23 재복원 — 감추면
+              집결 4팀이 곧장 챔피언으로 가는 것처럼 읽힘: 결승 단계가 보여야 한다).
               대기 카드는 R2 승자가 나오는 즉시 표시로 선반영 (8/23 — R1 집결과 같은
               문법. 좌=R2-1·우=R2-2 승자, setFinal 의 a/b 매핑과 동일해 [결선 확정]
               때 자리 점프가 없다. 확정·경기 시작 가드는 여전히 setFinal 몫) */}
@@ -1451,7 +1445,6 @@ export default function ViewerPage() {
               state={state}
               match={{ ...final, a: final.a ?? winningTeamId(semi1), b: final.b ?? winningTeamId(semi2) }}
               championSlot
-              pairHidden={!semisDrawn}
               slotLabel={
                 <span className="font-display champ-slot-text text-sm tracking-[0.28em] 2xl:text-base">
                   🏆 CHAMPION
