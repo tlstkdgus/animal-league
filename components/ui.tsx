@@ -63,16 +63,12 @@ export function SchoolTag({
   track,
   size = 'md',
   trackFrom2xl = false,
-  wrap = false,
 }: {
   school: string;
   track?: Track;
   size?: 'sm' | 'md' | 'lg';
   /** 브래킷 컴팩트 티어(xl)용 — 트랙 배지가 축소 불가라 좁은 카드에서 튀어나온다. 2xl 부터만 표시 */
   trackFrom2xl?: boolean;
-  /** 좁은 세로 카드용 — 말줄임 대신 줄바꿈. 잘린 학교명은 무대에서 틀린 학교다
-      (고려대 서울/세종, 한국외대 서울/글로벌 등 캠퍼스 구분이 말줄임에 먼저 잘린다) */
-  wrap?: boolean;
 }) {
   const logo = universityLogos[school];
   // 로고·텍스트는 2xl(프로젝터)에서 한 단계 확대 (8/22 무대 가독성)
@@ -85,16 +81,15 @@ export function SchoolTag({
     // flex + max-w-full: inline-flex 는 부모보다 넓어질 수 있어 좁은 카드에서 밖으로 튀어나온다.
     // 학교명 span 의 min-w-0 이 핵심 — flex item 의 min-width:auto 기본값 때문에
     // 이게 없으면 truncate 가 무시되고 전체 폭이 내용만큼 벌어진다.
-    <span className={`flex min-w-0 max-w-full items-center gap-1.5 text-white/75 ${wrap ? 'justify-center' : ''} ${textCls}`}>
+    <span className={`flex min-w-0 max-w-full items-center gap-1.5 text-white/75 ${textCls}`}>
       {logo && (
         <span className={`relative shrink-0 overflow-hidden rounded-full bg-white/95 ${logoCls}`}>
           <Image src={logo} alt="" fill sizes="32px" className="object-contain p-px" />
         </span>
       )}
-      {/* wrap: keep-all 우선(어절 단위), 공백 없는 긴 교명은 overflow-wrap 으로만 꺾는다.
-          주의 — wrap 은 인라인 트랙 배지와 함께 쓰면 폭 경쟁으로 글자가 세로로 쪼개진다:
-          wrap 사용처는 track 을 넘기지 말고 배지를 별도 줄로 둘 것 (TeamSolo 참조) */}
-      <span className={`min-w-0 break-keep ${wrap ? 'text-center leading-tight wrap-anywhere' : 'truncate'}`}>{school}</span>
+      {/* 말줄임 유지 (8/22 확정 — 줄바꿈 시도는 카드 높이가 들쭉해져 번복.
+          로고가 학교를 대신 말해주고, 미관이 우선이라는 운영자 판단) */}
+      <span className="min-w-0 truncate break-keep">{school}</span>
       {track && (
         <span className={trackFrom2xl ? 'hidden 2xl:inline-flex' : 'inline-flex'}>
           <TrackBadge track={track} />
