@@ -14,7 +14,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { CARD_RADIUS, CharacterArt, SchoolTag, TRACK_COLORS, Wordmark } from '@/components/ui';
+import { CARD_RADIUS, CharacterArt, SchoolTag, TRACK_COLORS, TrackBadge, Wordmark } from '@/components/ui';
 import { armSfx, playChips, playFan, playFlip, playImpact, playShuffle } from '@/lib/sfx';
 import universityLogos from '@/lib/universityLogos';
 import { winningTeamId, type Match, type Team } from '@/lib/tournament';
@@ -203,9 +203,17 @@ function TeamSolo({
       <div className="mt-2 line-clamp-2 text-[13px] font-extrabold leading-tight tracking-tight 2xl:text-sm">
         {teamName(state, index)}
       </div>
-      <div className="mt-1 flex justify-center">
+      {/* 학교명(줄바꿈 허용)과 트랙 배지를 줄로 분리 — 한 줄에 섞으면 좁은 카드에서
+          폭 경쟁으로 글자가 세로로 쪼개진다. min-h 는 교명 2줄 + 배지 분량 고정
+          (1줄/2줄 차이로 카드 높이가 들쭉하지 않게) */}
+      <div className="mt-1 min-h-12 2xl:min-h-14">
         {team && index !== null ? (
-          <SchoolTag school={team.school || '학교 미입력'} track={team.track} size="sm" />
+          <>
+            <SchoolTag school={team.school || '학교 미입력'} size="sm" wrap />
+            <div className="mt-0.5 flex justify-center">
+              <TrackBadge track={team.track} />
+            </div>
+          </>
         ) : null}
       </div>
     </div>
@@ -252,7 +260,7 @@ function PairColumn({ state, match }: { state: PublicState; match: Match }) {
         )}
       </div>
       <div
-        className="h-4 2xl:h-5"
+        className="h-4"
         style={{ borderLeft: `2px ${done ? 'solid rgba(236,108,1,0.55)' : 'dashed rgba(255,255,255,0.16)'}` }}
         aria-hidden
       />
@@ -947,11 +955,12 @@ export default function ViewerPage() {
     <main className="flex min-h-dvh flex-col px-5 pb-3 pt-5 lg:px-10">
       <style>{`
         .font-display { font-family: var(--font-anton), var(--font-suit), sans-serif; }
-        /* 무대 확대 (8/22) — 프로젝터(≥1880px)에서 피라미드 전체를 1.18배.
-           zoom 은 레이아웃 크기가 함께 커져 연결선↔준결승 정합이 그대로 유지된다
-           (개별 값 확대는 PyramidConnector 폭 재계산이 필요해 어긋날 위험).
-           1.18 상한 근거: R1 행 폭 1540px × 1.18 = 1817 ≤ 콘텐츠 폭 1840(px-10 제외) */
-        @media (min-width: 1880px) { .pyramid-zoom { zoom: 1.18; } }
+        /* 무대 확대 (8/22) — 프로젝터(≥1880px)에서 피라미드 전체를 zoom 배.
+           zoom 은 레이아웃 크기가 함께 커져 연결선↔준결승 정합이 그대로 유지된다.
+           1.18 → 1.06 하향 (8/22 학교명 가독성 패스): R1 카드가 교명 2줄 + 트랙
+           줄로 세로가 커져 1.18 은 1080 세로를 102px 넘쳤다. 큰 글자는 이제
+           타이포 확대가 담당하고 zoom 은 마무리만 — 세로 실측 1063/1080 */
+        @media (min-width: 1880px) { .pyramid-zoom { zoom: 1.06; } }
         .live-pulse { animation: livePulse 1.2s ease-in-out infinite; }
         @keyframes livePulse { 50% { opacity: 0.45; } }
         .card-live { box-shadow: 0 0 28px rgba(255,59,48,0.22); }
@@ -1295,7 +1304,7 @@ export default function ViewerPage() {
       {/* 대진표 — xl(1280px) 이상은 피라미드형 (8/20 결정). 결승(상) ← 준결승(중) ← R1 개별(하).
           xl 미만은 물리적으로 좁아 세로 스택 유지 (실사용 노트북 제보로 lg → xl 상향 이력) */}
       <div className="pyramid-zoom hidden flex-1 flex-col justify-center py-2 xl:flex">
-        <p className="font-display mb-2 text-center text-xl text-white/35">FINAL</p>
+        <p className="font-display mb-1 text-center text-xl text-white/35">FINAL</p>
         <div className="flex justify-center">
           <div className="w-95 rounded-2xl border border-(--orange)/25 p-1.5 2xl:w-105">
             <MatchCard
@@ -1340,7 +1349,7 @@ export default function ViewerPage() {
           ))}
           {[state.matches.filter((m) => m.round === 1).slice(0, 2), state.matches.filter((m) => m.round === 1).slice(2)].map(
             (half, i) => (
-              <div key={i} className="mt-7 flex gap-7 2xl:mt-9 2xl:gap-10">
+              <div key={i} className="mt-7 flex gap-7 2xl:gap-10">
                 {half.map((m) => (
                   <PairColumn key={m.id} state={state} match={m} />
                 ))}

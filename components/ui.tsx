@@ -40,10 +40,14 @@ export const TRACK_COLORS: Record<Track, string> = {
 };
 
 export function TrackBadge({ track }: { track: Track }) {
-  // 알약 배지 대신 도트 + 텍스트 — 배지가 화면마다 반복되면 스티커처럼 보인다
+  // 알약 배지 대신 도트 + 텍스트 — 배지가 화면마다 반복되면 스티커처럼 보인다.
+  // 2xl(프로젝터)에서 한 단계 확대 (8/22 무대 가독성 — 11px 는 홀 거리에서 장식이었다)
   return (
-    <span className="inline-flex shrink-0 items-center gap-1.5 text-[11px] font-bold" style={{ color: TRACK_COLORS[track] }}>
-      <span className="h-1.5 w-1.5 rounded-full" style={{ background: TRACK_COLORS[track] }} aria-hidden />
+    <span
+      className="inline-flex shrink-0 items-center gap-1.5 text-[11px] font-bold 2xl:text-[13px]"
+      style={{ color: TRACK_COLORS[track] }}
+    >
+      <span className="h-1.5 w-1.5 rounded-full 2xl:h-2 2xl:w-2" style={{ background: TRACK_COLORS[track] }} aria-hidden />
       {track}
     </span>
   );
@@ -59,31 +63,38 @@ export function SchoolTag({
   track,
   size = 'md',
   trackFrom2xl = false,
+  wrap = false,
 }: {
   school: string;
   track?: Track;
   size?: 'sm' | 'md' | 'lg';
   /** 브래킷 컴팩트 티어(xl)용 — 트랙 배지가 축소 불가라 좁은 카드에서 튀어나온다. 2xl 부터만 표시 */
   trackFrom2xl?: boolean;
+  /** 좁은 세로 카드용 — 말줄임 대신 줄바꿈. 잘린 학교명은 무대에서 틀린 학교다
+      (고려대 서울/세종, 한국외대 서울/글로벌 등 캠퍼스 구분이 말줄임에 먼저 잘린다) */
+  wrap?: boolean;
 }) {
   const logo = universityLogos[school];
-  const logoPx = size === 'lg' ? 24 : size === 'md' ? 19 : 16;
-  const textCls = size === 'lg' ? 'text-base lg:text-lg' : size === 'md' ? 'text-sm' : 'text-[13px]';
+  // 로고·텍스트는 2xl(프로젝터)에서 한 단계 확대 (8/22 무대 가독성)
+  const logoCls =
+    size === 'lg' ? 'h-6 w-6 2xl:h-8 2xl:w-8' : size === 'md' ? 'h-[19px] w-[19px] 2xl:h-6 2xl:w-6' : 'h-4 w-4 2xl:h-5 2xl:w-5';
+  const textCls =
+    size === 'lg' ? 'text-base lg:text-lg 2xl:text-2xl' : size === 'md' ? 'text-sm 2xl:text-base' : 'text-[13px] 2xl:text-[15px]';
 
   return (
     // flex + max-w-full: inline-flex 는 부모보다 넓어질 수 있어 좁은 카드에서 밖으로 튀어나온다.
     // 학교명 span 의 min-w-0 이 핵심 — flex item 의 min-width:auto 기본값 때문에
     // 이게 없으면 truncate 가 무시되고 전체 폭이 내용만큼 벌어진다.
-    <span className={`flex min-w-0 max-w-full items-center gap-1.5 text-white/65 ${textCls}`}>
+    <span className={`flex min-w-0 max-w-full items-center gap-1.5 text-white/75 ${wrap ? 'justify-center' : ''} ${textCls}`}>
       {logo && (
-        <span
-          className="relative shrink-0 overflow-hidden rounded-full bg-white/95"
-          style={{ width: logoPx, height: logoPx }}
-        >
-          <Image src={logo} alt="" fill sizes={`${logoPx}px`} className="object-contain p-px" />
+        <span className={`relative shrink-0 overflow-hidden rounded-full bg-white/95 ${logoCls}`}>
+          <Image src={logo} alt="" fill sizes="32px" className="object-contain p-px" />
         </span>
       )}
-      <span className="min-w-0 truncate break-keep">{school}</span>
+      {/* wrap: keep-all 우선(어절 단위), 공백 없는 긴 교명은 overflow-wrap 으로만 꺾는다.
+          주의 — wrap 은 인라인 트랙 배지와 함께 쓰면 폭 경쟁으로 글자가 세로로 쪼개진다:
+          wrap 사용처는 track 을 넘기지 말고 배지를 별도 줄로 둘 것 (TeamSolo 참조) */}
+      <span className={`min-w-0 break-keep ${wrap ? 'text-center leading-tight wrap-anywhere' : 'truncate'}`}>{school}</span>
       {track && (
         <span className={trackFrom2xl ? 'hidden 2xl:inline-flex' : 'inline-flex'}>
           <TrackBadge track={track} />
