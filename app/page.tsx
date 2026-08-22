@@ -631,8 +631,15 @@ function DrawCard({ state, index, order }: { state: PublicState; index: number |
           <Image src="/card-back-0624.png" alt="" fill sizes="192px" className="object-cover" />
         </div>
       </div>
-      {/* 팀명 라벨 없음 (8/23 운영자: "팀명 다 빼") — 카드 아트가 곧 팀 식별이고,
-          확정 대진은 복귀한 대진표의 승자 슬롯이 알려준다 */}
+      {/* 확정 팀명 — 공개 플립 뒤 카드 위에 (8/23 재조정: "팀명 다 빼" 후
+          "어느 팀인지 안 보인다" — 같은 캐릭터·학교가 붙을 수 있어 팀명은 필요.
+          도입(모으기 전) 라벨은 계속 없음, 위치는 정지 화면과 같은 카드 위) */}
+      <p
+        className="draw-name absolute -top-9 left-1/2 w-48 -translate-x-1/2 truncate text-center text-lg font-extrabold lg:-top-10 lg:text-xl 2xl:-top-11 2xl:text-2xl"
+        style={{ animationDelay: `${DRAW_FLIP_BASE_S + order * 0.5 + 0.45}s` }}
+      >
+        {teamName(state, index)}
+      </p>
     </div>
   );
 }
@@ -682,8 +689,9 @@ function DrawSequence({ state, semis }: { state: PublicState; semis: [Match, Mat
       <p className="champion-rise text-2xl font-extrabold tracking-tight lg:text-4xl 2xl:text-5xl">2라운드 대진을 추첨합니다</p>
       <div ref={bedRef} className="flex items-start justify-center gap-14 lg:gap-24">
         {semis.map((semi, s) => (
-          <div key={semi.id} className="flex flex-col items-center gap-5">
-            {/* 대진 라벨·VS 는 원거리 가독 크기로 (8/23 운영자: "너무 작아 안 보여") */}
+          <div key={semi.id} className="flex flex-col items-center gap-12 2xl:gap-14">
+            {/* 대진 라벨·VS 는 원거리 가독 크기로 (8/23 운영자: "너무 작아 안 보여").
+                gap 이 넓은 이유: 카드 위 팀명 라벨(-top) 자리 */}
             <span
               className="draw-name font-display text-3xl tracking-wider text-(--orange) lg:text-4xl 2xl:text-5xl"
               style={{ animationDelay: `${DRAW_FLIP_BASE_S + 2 + s * 0.2}s` }}
