@@ -134,7 +134,8 @@ export function CharacterArt({
       {characterKey ? (
         <Image src={`/characters/${characterKey}.png`} alt="" fill sizes={sizes} className="object-cover" />
       ) : (
-        <div className="grid h-full w-full place-items-center text-xs text-white/25">?</div>
+        // 빈 슬롯 = 물음표 카드 에셋 (8/23 운영자 — 회색 "?" 박스 대신 실물 카드 뒷면)
+        <Image src="/card-back-Q-ver2.png" alt="" fill sizes={sizes} className="object-cover opacity-80" />
       )}
     </div>
   );
