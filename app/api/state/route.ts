@@ -20,7 +20,9 @@ export async function GET(): Promise<Response> {
       return fail(503, 'STATE_UNAVAILABLE', '상태를 불러오지 못했습니다. 잠시 후 다시 시도됩니다.');
     }
     return Response.json(
-      { ok: true, ...toPublicState(row) },
+      // now: 서버 현재 시각 — 기기 시계 편차 보정용 (lib/clock.ts).
+      // CDN 캐시로 낡을 수 있어 클라이언트가 Age 헤더와 함께 쓴다
+      { ok: true, ...toPublicState(row), now: Date.now() },
       { headers: { 'Cache-Control': 'public, s-maxage=2, stale-while-revalidate=8' } },
     );
   });
