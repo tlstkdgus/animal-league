@@ -239,14 +239,14 @@ function PairColumn({
 
   return (
     <div className="flex flex-col items-center">
-      {/* 슬롯 = 경기 전 예고(트랙 칩) → 종료 후 결과(승자명) (8/23 확정 — 트랙 유지·
-          슬롯 제거를 하루 동안 시도한 끝의 원복: 트랙명은 경기 전에만 정보 가치가
-          있고, 끝난 뒤 그 자리의 정보는 승자다) */}
+      {/* R1 트랙 슬롯(slotBg)은 done 후에도 트랙 칩 그대로 (8/23 최종 — 승자명으로
+          바꾸면 집결 박스의 팀명과 이중 표기가 된다. 승자는 카드 하이라이트·집결
+          박스 몫). 승자명 슬롯은 R2/F(FINAL 진출·CHAMPION)에만 */}
       <div
         className={`rounded-lg py-1.5 text-center text-xs font-bold 2xl:text-sm ${
           championSlot && !done ? 'champ-slot w-52 py-2 2xl:w-64' : 'w-44 2xl:w-56'
         } ${
-          done
+          done && !slotBg
             ? 'border border-(--orange)/45'
             : championSlot
               ? ''
@@ -254,10 +254,12 @@ function PairColumn({
                 ? 'border border-white/10'
                 : 'border border-dashed border-white/20'
         }`}
-        style={{ background: done ? 'var(--orange-glow)' : championSlot ? undefined : (slotBg ?? 'rgba(255,255,255,0.03)') }}
+        style={{
+          background: slotBg ?? (done ? 'var(--orange-glow)' : championSlot ? undefined : 'rgba(255,255,255,0.03)'),
+        }}
       >
-        {done ? (
-          /* 발표 순간 슬롯 채움 라이즈 — 팀명만, "→ R2-N 진출" 배지 없음 (8/23 확정) */
+        {done && !slotBg ? (
+          /* 발표 순간 슬롯 채움 라이즈 — 팀명만, "→ 진출" 배지 없음 (8/23 확정) */
           <span className="champion-rise line-clamp-1 px-2">{teamName(state, winnerIdx)}</span>
         ) : (
           <span>{slotLabel}</span>
