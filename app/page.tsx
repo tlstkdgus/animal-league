@@ -17,7 +17,8 @@ import Image from 'next/image';
 import { cardRadiusWithBorder, CharacterArt, SchoolTag, TRACK_COLORS, Wordmark } from '@/components/ui';
 import { armSfx, playChips, playFan, playFanfare, playFlip, playImpact, playShuffle, playVersus } from '@/lib/sfx';
 import universityLogos from '@/lib/universityLogos';
-import { winningTeamId, type Match, type Team } from '@/lib/tournament';
+import { isAnnounced, winningTeamId, type Match, type Team } from '@/lib/tournament';
+import type { ReactNode } from 'react';
 
 type PublicState = { teams: Team[]; matches: Match[]; rev: number };
 
@@ -115,13 +116,11 @@ function MatchCard({
   state,
   match,
   size = 'md',
-  revealing,
   undrawnLabel,
 }: {
   state: PublicState;
   match: Match;
   size?: 'md' | 'lg';
-  revealing: boolean;
   undrawnLabel?: string;
 }) {
   const live = match.status === 'live';
@@ -129,7 +128,7 @@ function MatchCard({
 
   return (
     <div
-      className={`viewer-card relative rounded-xl border p-1.5 ${live ? 'card-live' : ''} ${revealing ? 'card-reveal' : ''}`}
+      className={`viewer-card relative rounded-xl border p-1.5 ${live ? 'card-live' : ''}`}
       style={{
         borderColor: live
           ? 'var(--live)'
@@ -203,11 +202,10 @@ function TeamSolo({
       <div className="mt-2 line-clamp-2 text-[13px] font-extrabold leading-tight tracking-tight 2xl:text-sm">
         {teamName(state, index)}
       </div>
-      {/* 학교명은 한 줄 + 말줄임 (8/22 확정 — 2줄 시도는 카드 높이가 이상해져 번복) */}
+      {/* 학교명 한 줄 + 말줄임. 트랙은 카드에서 빼고 승자 슬롯 라벨이 담당한다
+          (8/22 운영자 — 트랙 자리를 학교명이 최대한 쓰게) */}
       <div className="mt-1 flex justify-center">
-        {team && index !== null ? (
-          <SchoolTag school={team.school || '학교 미입력'} track={team.track} size="sm" />
-        ) : null}
+        {team && index !== null ? <SchoolTag school={team.school || '학교 미입력'} size="sm" /> : null}
       </div>
     </div>
   );
@@ -219,37 +217,45 @@ function TeamSolo({
  * 추첨이 끝나면 승자 슬롯에 "→ R2-N" 진출 배지 — R2 는 랜덤이라 이 열에서
  * 준결승으로 선을 긋지 않는다 (긋는 순간 사이드 고정 진출로 읽힌다).
  */
-function PairColumn({ state, match }: { state: PublicState; match: Match }) {
+function PairColumn({
+  state,
+  match,
+  slotLabel,
+  showDest = false,
+}: {
+  state: PublicState;
+  match: Match;
+  /** done 전 승자 슬롯 라벨 — R1 은 트랙명(8/22 운영자), R2/F 는 진출처 */
+  slotLabel: ReactNode;
+  /** R1 전용: done 후 "→ R2-N 진출" 배지 */
+  showDest?: boolean;
+}) {
   const live = match.status === 'live';
   const done = match.status === 'done';
   const winnerIdx = winningTeamId(match);
   const dest =
-    done && winnerIdx !== null
+    showDest && done && winnerIdx !== null
       ? state.matches.find((m) => m.round === 2 && (m.a === winnerIdx || m.b === winnerIdx))
       : undefined;
 
   return (
-    // 잔광(card-reveal)은 이 열에 걸지 않는다 (2026-08-22 피드백: 슬롯·스텁·카드를
-    // 감싼 바운딩 박스가 통째로 빛나 이상하게 보임). 결승·준결승 단일 카드에만 유지 —
-    // R1 은 승자 하이라이트 + 승자 슬롯 채움이 결과를 이미 말해준다
     <div className="flex flex-col items-center">
       <div
         className={`w-44 rounded-lg py-1.5 text-center text-xs font-bold 2xl:w-48 ${
-          done ? 'border border-(--orange)/45' : 'border border-dashed border-white/20 text-white/40'
+          done ? 'border border-(--orange)/45' : 'border border-dashed border-white/20'
         }`}
         style={{ background: done ? 'var(--orange-glow)' : 'rgba(255,255,255,0.03)' }}
       >
         {done ? (
           <>
-            <span className="line-clamp-1 px-2">{teamName(state, winnerIdx)}</span>
+            {/* 발표 순간 슬롯 채움 라이즈 — 결과 화면 → 대진표 복귀 시 승자가 올라온 느낌 */}
+            <span className="champion-rise line-clamp-1 px-2">{teamName(state, winnerIdx)}</span>
             {dest && (
               <span className="font-en block text-[10px] font-bold text-(--orange)">→ {dest.id} 진출</span>
             )}
           </>
         ) : (
-          <span>
-            <span className="font-en">{match.id}</span> 승자
-          </span>
+          <span>{slotLabel}</span>
         )}
       </div>
       <div
@@ -420,121 +426,90 @@ function FocusLive({ state, match }: { state: PublicState; match: Match }) {
 }
 
 /**
- * 결과 공개 시퀀스 — "투표를 공개합니다" → 익명 표가 하나씩 오픈 → 승자 발표.
- * 표가 없으면(백업 모드) 오픈 단계를 건너뛰고 바로 발표한다.
- * 타이밍은 부모(ViewerPage)가 시퀀스 전체 길이로 관리하고, 여기서는 승자 단계 전환만 다룬다.
+ * 표 오픈 정지 화면 (8/22 개편, §6.1 2단계 공개의 1단계) — 카드만 있는 페이지.
+ * 뒷면 칩이 한 장씩 뒤집히고, 전부 열린 뒤에도 **머문다** — 심사위원 코멘트 시간.
+ * 다음 단계(결과 화면)는 운영자의 [발표] 액션이 연다. 타이틀·집계·팀 히어로 없음
+ * (운영자 지시: 카드 5장만). 승부는 카드 색(테두리 진영색)이 이미 말해준다.
  */
-function RevealSequence({ state, match }: { state: PublicState; match: Match }) {
+function FreezeReveal({ state, match }: { state: PublicState; match: Match }) {
   const votes = match.votes ?? [];
-  const [showWinner, setShowWinner] = useState(votes.length === 0);
-  // 오픈된 칩 수. 시계는 칩의 chipOpen 애니메이션이 끝나는 이벤트 하나다 —
-  // JS 타이머로 CSS 타이밍을 수치 복제하면 두 시계가 되어 어긋난 전례가 있다 (PR #24)
-  const [opened, setOpened] = useState(0);
-
-  useEffect(() => {
-    if (votes.length === 0) return;
-    const timer = setTimeout(() => setShowWinner(true), votes.length * CHIP_INTERVAL_MS + 800);
-    return () => clearTimeout(timer);
-  }, [votes.length]);
-
-  // 시퀀스 도입 소리 — 덱 부채꼴 펼치기. 표가 있어 뒷면 칩이 등장할 때만,
-  // reduced-motion 은 칩 등장 모션이 없으니 소리도 생략 (추첨 셔플과 같은 규칙)
-  useEffect(() => {
-    if (votes.length === 0 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const timer = setTimeout(() => playFan(), 100);
-    return () => clearTimeout(timer);
-  }, [votes.length]);
-
-  // 승자 발표 순간 — 칩 클래터. 백업 모드(표 0건)는 마운트 즉시 발표라 바로 울린다.
-  // 발표는 모션이 아니라 정보라 reduced-motion 에서도 낸다 (플립·셔플과 다른 판단)
-  useEffect(() => {
-    if (showWinner) playChips();
-  }, [showWinner]);
-
-  // 모션 축소 환경은 칩이 애니메이션 없이 즉시 다 보이고 animationend 도 오지 않는다
-  // — 집계도 즉시 전체 표시 (이벤트만 믿으면 0 에 영원히 머문다).
-  // 타이머로 미루는 건 react-hooks/set-state-in-effect (effect 본문 직접 setState 금지)
-  useEffect(() => {
-    if (votes.length === 0 || !window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const timer = setTimeout(() => setOpened(votes.length), 0);
-    return () => clearTimeout(timer);
-  }, [votes.length]);
-
-  const tally = (side: 'A' | 'B') => votes.filter((v) => v === side).length;
-  const openTally = (side: 'A' | 'B') => votes.slice(0, opened).filter((v) => v === side).length;
   const chipCharacter = (side: 'A' | 'B') => teamAt(state, side === 'A' ? match.a : match.b)?.character ?? null;
 
+  // 도입 소리 — 덱 부채꼴. reduced-motion 은 칩 등장 모션이 없으니 생략
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const timer = setTimeout(() => playFan(), 100);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-8 py-6 lg:gap-10">
-      <p className="champion-rise text-2xl font-extrabold tracking-tight lg:text-4xl 2xl:text-5xl">
-        {votes.length > 0 ? '투표를 공개합니다' : '결과를 발표합니다'}
-      </p>
-
-      <div className="grid w-full max-w-6xl grid-cols-1 items-center gap-8 lg:grid-cols-[1fr_auto_1fr] lg:gap-12">
-        <TeamHero state={state} index={match.a} compact dimmed={showWinner && match.winner !== 'A'} winner={showWinner && match.winner === 'A'} />
-        <div className="flex flex-col items-center gap-2">
-          {votes.length > 0 && (
-            <div className="font-en flex items-center gap-5 text-5xl font-extrabold tabular-nums lg:text-6xl 2xl:text-7xl">
-              <span style={{ color: SIDE_COLORS.A }}>{showWinner ? tally('A') : openTally('A')}</span>
-              <span className="text-2xl text-white/25">:</span>
-              <span style={{ color: SIDE_COLORS.B }}>{showWinner ? tally('B') : openTally('B')}</span>
-            </div>
-          )}
-          {!showWinner && votes.length === 0 && <span className="font-display text-6xl text-white/85">VS</span>}
-        </div>
-        <TeamHero state={state} index={match.b} compact dimmed={showWinner && match.winner !== 'B'} winner={showWinner && match.winner === 'B'} />
-      </div>
-
-      {votes.length > 0 && (
-        <div className="flex flex-wrap items-end justify-center gap-3.5">
-          {/* 실물 카드 문법 (8/20 확정): 뒷면(card-back-Q)이 먼저 깔리고 한 장씩 앞면으로
-              뒤집힌다. 앞면은 표받은 팀의 캐릭터 카드 — A/B 글자는 한 번 더 생각하게 만든다.
-              오픈 시계는 chipFlip 의 animationend 하나 — chipIn 것과 섞이지 않게 이름을 검사 */}
-          {votes.map((side, i) => (
+    <div className="flex flex-1 items-center justify-center py-6">
+      <div className="flex flex-wrap items-center justify-center gap-5 lg:gap-7 2xl:gap-9">
+        {/* 실물 카드 문법 (8/20): 뒷면(card-back-Q)이 깔리고 한 장씩 앞면으로.
+            앞면은 표받은 팀의 캐릭터 카드 — 테두리 진영색이 곧 개표 현황이다.
+            플립 시작 = 효과음 (animationstart, 단일 시계 원칙) */}
+        {votes.map((side, i) => (
+          <div
+            key={i}
+            className="chip-outer relative aspect-2/3 w-32 lg:w-44 2xl:w-52"
+            style={{ animationDelay: `${i * 0.06}s` }}
+          >
             <div
-              key={i}
-              className="chip-outer relative aspect-2/3 w-16 lg:w-20 2xl:w-24"
-              style={{ animationDelay: `${i * 0.06}s` }}
+              className="chip-inner relative h-full w-full"
+              onAnimationStart={(e) => e.animationName === 'chipFlip' && playFlip()}
+              style={{ animationDelay: `${(i * CHIP_INTERVAL_MS) / 1000}s` }}
             >
+              {/* 테두리는 카드 곡률에 밀착 — 바깥 radius = 곡률 + 테두리 (ui.tsx) */}
               <div
-                className="chip-inner relative h-full w-full"
-                // 플립 시작 = 효과음, 플립 종료 = 집계 오픈. 같은 애니메이션의 양 끝 이벤트라
-                // 소리와 화면이 어긋날 수 없다 (단일 시계 원칙의 연장, PR #24 참조)
-                onAnimationStart={(e) => e.animationName === 'chipFlip' && playFlip()}
-                onAnimationEnd={(e) => e.animationName === 'chipFlip' && setOpened((n) => Math.max(n, i + 1))}
-                style={{ animationDelay: `${(i * CHIP_INTERVAL_MS) / 1000}s` }}
+                className="chip-face absolute inset-0 overflow-hidden border-2 bg-white/5"
+                style={{
+                  borderRadius: cardRadiusWithBorder(2),
+                  borderColor: SIDE_COLORS[side],
+                  boxShadow: `0 0 26px color-mix(in srgb, ${SIDE_COLORS[side]} 40%, transparent)`,
+                }}
               >
-                {/* 앞면 — 팀 캐릭터 카드. 테두리가 카드 곡률에 밀착하도록 바깥 radius 를
-                    (카드 곡률 + 테두리 두께)로 준다 — 안쪽 클리핑 곡선이 정확히 베이크
-                    곡률이 된다 (ui.tsx cardRadiusWithBorder, 8/22) */}
-                <div
-                  className="chip-face absolute inset-0 overflow-hidden border-2 bg-white/5"
-                  style={{
-                    borderRadius: cardRadiusWithBorder(2),
-                    borderColor: SIDE_COLORS[side],
-                    boxShadow: `0 0 18px color-mix(in srgb, ${SIDE_COLORS[side]} 35%, transparent)`,
-                  }}
-                >
-                  {chipCharacter(side) ? (
-                    <Image src={`/characters/${chipCharacter(side)}.png`} alt="" fill sizes="96px" className="object-cover" />
-                  ) : (
-                    <span className="grid h-full w-full place-items-center text-xl font-extrabold" style={{ color: SIDE_COLORS[side] }}>
-                      {side}
-                    </span>
-                  )}
-                </div>
-                {/* 뒷면 — 물음표 카드 (디자이너 에셋), 같은 밀착 곡률 */}
-                <div
-                  className="chip-face chip-back absolute inset-0 overflow-hidden border border-white/15 bg-white/5"
-                  style={{ borderRadius: cardRadiusWithBorder(1) }}
-                >
-                  <Image src="/card-back-Q-ver2.png" alt="" fill sizes="96px" className="object-cover" />
-                </div>
+                {chipCharacter(side) ? (
+                  <Image src={`/characters/${chipCharacter(side)}.png`} alt="" fill sizes="208px" className="object-cover" />
+                ) : (
+                  <span className="grid h-full w-full place-items-center text-3xl font-extrabold" style={{ color: SIDE_COLORS[side] }}>
+                    {side}
+                  </span>
+                )}
+              </div>
+              <div
+                className="chip-face chip-back absolute inset-0 overflow-hidden border border-white/15 bg-white/5"
+                style={{ borderRadius: cardRadiusWithBorder(1) }}
+              >
+                <Image src="/card-back-Q-ver2.png" alt="" fill sizes="208px" className="object-cover" />
               </div>
             </div>
-          ))}
-        </div>
-      )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** 결과 화면 홀드 길이(ms) — 발표 액션 후 이만큼 보여주고 대진표로 복귀한다. */
+const RESULT_SCENE_MS = 6000;
+
+/**
+ * 결과 화면 (2단계 공개의 2단계) — 운영자의 [발표]에 맞춰 승자를 크게.
+ * 코멘트가 끝난 뒤의 공식 발표 순간이라 클래터 + 플링이 여기서 난다.
+ */
+function ResultScene({ state, match }: { state: PublicState; match: Match }) {
+  useEffect(() => {
+    const timer = setTimeout(() => playChips(), 150);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <div className="flex flex-1 items-center justify-center py-6">
+      <div className="grid w-full max-w-6xl grid-cols-1 items-center gap-8 lg:grid-cols-[1fr_auto_1fr] lg:gap-12">
+        <TeamHero state={state} index={match.a} compact dimmed={match.winner !== 'A'} winner={match.winner === 'A'} />
+        <div aria-hidden />
+        <TeamHero state={state} index={match.b} compact dimmed={match.winner !== 'B'} winner={match.winner === 'B'} />
+      </div>
     </div>
   );
 }
@@ -791,19 +766,7 @@ function ChampionTakeover({ state, final }: { state: PublicState; final: Match }
           <div className="champ-beam champ-beam--r" />
         </div>
 
-        {/* 좌상단 브랜드 블록 — 다른 화면들과 동일하게 고정 (2026-08-22 운영자 결정.
-            원본의 rail-top 텍스트 한 줄 대신 본 화면 헤더 블록을 그대로 쓴다) */}
-        <div className="champ-rail absolute left-5 top-5 lg:left-10">
-          <p className="font-en text-[10px] font-bold text-white/35 lg:text-[11px] 2xl:text-[13px]">
-            2026 LIKELION UNIV. 14TH HACKATHON
-          </p>
-          <h1 className="mt-2 text-(--orange)">
-            <Wordmark className="h-7 w-auto lg:h-11 2xl:h-13" />
-          </h1>
-          <p className="mt-2 text-[13px] font-bold text-white/55 lg:text-sm 2xl:text-base">
-            본선 토너먼트 · 8.25 COEX MAGOK
-          </p>
-        </div>
+        {/* 좌상단 브랜드 블록은 제거 (8/22 운영자: 로고·멘트 삭제 — 무대는 연출만) */}
 
         {/* 중앙 — CHAMPION → 카드 → 팀명 → 소속 */}
         <div className="relative flex h-full flex-col items-center justify-center">
@@ -887,14 +850,13 @@ function ChampionTakeover({ state, final }: { state: PublicState; final: Match }
 
 export default function ViewerPage() {
   const [state, setState] = useState<PublicState | null>(null);
-  const [revealingId, setRevealingId] = useState<string | null>(null);
-  // 결과 공개 시퀀스 — 공개 순간의 경기 스냅샷을 고정해서 재생 (폴링 갱신에 흔들리지 않게)
-  const [sequence, setSequence] = useState<Match | null>(null);
-  // R2 추첨 시퀀스 — 추첨 순간의 준결승 스냅샷 고정 (같은 이유)
+  // 결과 화면 — 발표(announced) 전이 순간의 경기 스냅샷 고정, RESULT_SCENE_MS 후 대진표
+  const [resultScene, setResultScene] = useState<Match | null>(null);
+  // R2 추첨 시퀀스 — 추첨 순간의 준결승 스냅샷 고정 (폴링 갱신에 흔들리지 않게)
   const [drawSeq, setDrawSeq] = useState<[Match, Match] | null>(null);
   const revRef = useRef(0);
-  const prevStatusRef = useRef<Record<string, string>>({});
-  const prevDrawnRef = useRef<boolean | null>(null); // null = 아직 첫 스냅샷 전
+  const prevAnnouncedRef = useRef<Record<string, boolean> | null>(null); // null = 첫 스냅샷 전
+  const prevDrawnRef = useRef<boolean | null>(null);
 
   const poll = useCallback(async () => {
     try {
@@ -904,26 +866,25 @@ export default function ViewerPage() {
       const body = await res.json();
       if (!body?.ok || body.rev < revRef.current) return; // 실패·낡은 스냅샷 → 마지막 정상 유지
       revRef.current = body.rev;
-
-      // 결과 공개 감지 — 직전 스냅샷에서 done 이 아니었던 경기가 done 이 되면 1회성 연출
       const next: PublicState = { teams: body.teams, matches: body.matches, rev: body.rev };
-      const prev = prevStatusRef.current;
-      const justDone = next.matches.find((m) => m.status === 'done' && prev[m.id] && prev[m.id] !== 'done');
-      prevStatusRef.current = Object.fromEntries(next.matches.map((m) => [m.id, m.status]));
-      if (justDone) {
-        // 시퀀스 길이 = 표 오픈(CHIP_INTERVAL_MS/장) + 카운트 여운 + 승자 발표 홀드
-        const voteCount = justDone.votes?.length ?? 0;
-        const total = (voteCount > 0 ? voteCount * CHIP_INTERVAL_MS + 800 : 0) + 4200;
-        setSequence(justDone);
-        setTimeout(() => setSequence(null), total);
-        // 시퀀스가 끝나고 브래킷으로 돌아왔을 때 해당 카드에 잔광
-        setRevealingId(justDone.id);
-        setTimeout(() => setRevealingId(null), total + 3000);
+
+      // 발표 전이 감지 (2단계 공개의 2단계, 8/22) — announced 로 바뀌는 순간 결과 화면.
+      // 정지 화면(1단계)은 상태 파생이라 감지가 필요 없다 (done && !announced 면 항상 표시).
+      // 첫 폴링에서는 재생하지 않는다 — 발표 끝난 상태로 새로고침한 화면의 재재생 방지.
+      // 결선은 결과 화면 대신 우승 테이크오버가 바로 뜬다
+      const prevA = prevAnnouncedRef.current;
+      if (prevA) {
+        const justAnnounced = next.matches.find(
+          (m) => isAnnounced(m) && prevA[m.id] === false && m.id !== 'F' && (m.votes?.length ?? 0) > 0,
+        );
+        if (justAnnounced) {
+          setResultScene(justAnnounced);
+          setTimeout(() => setResultScene(null), RESULT_SCENE_MS);
+        }
       }
+      prevAnnouncedRef.current = Object.fromEntries(next.matches.map((m) => [m.id, isAnnounced(m)]));
 
       // R2 추첨 감지 — 준결승 슬롯이 비어 있다가 채워지는 순간 1회성 연출 (8/20).
-      // 첫 폴링(prevDrawnRef null)에서는 재생하지 않는다 — 추첨이 끝난 상태로 새로고침한
-      // 화면이 연출을 다시 트는 사고 방지 (공개 연출의 prev[m.id] 가드와 같은 이유)
       const semis = next.matches.filter((m) => m.round === 2);
       const drawnNow = semis.length === 2 && semis.every((m) => m.a !== null && m.b !== null);
       if (drawnNow && prevDrawnRef.current === false) {
@@ -962,7 +923,12 @@ export default function ViewerPage() {
   const final = byId(state, 'F');
   const semi1 = byId(state, 'R2-1');
   const semi2 = byId(state, 'R2-2');
-  const champion = final.status === 'done';
+  // 정지 화면은 상태 파생 — done && 미발표(표 있음)면 새로고침해도 그대로 유지된다.
+  // 결선은 제외: 결선 정지 화면 뒤의 발표는 우승 테이크오버가 담당
+  const frozen =
+    state.matches.find((m) => m.status === 'done' && !isAnnounced(m) && m.id !== 'F') ??
+    (final.status === 'done' && !isAnnounced(final) ? final : null);
+  const champion = isAnnounced(final);
 
   return (
     <main className="flex min-h-dvh flex-col px-5 pb-3 pt-5 lg:px-10">
@@ -1094,11 +1060,6 @@ export default function ViewerPage() {
           animation: champPoolIn 1.1s var(--eo) calc(var(--tc) + 0.06s) forwards, champBreathe 5.2s ease-in-out 2.4s infinite;
         }
         @keyframes champPoolIn { from { opacity: 0; transform: scaleX(0.3); } to { opacity: 1; transform: scaleX(1); } }
-        .champ-rail {
-          opacity: 0; pointer-events: none;
-          animation: champRailIn 0.9s ease-out 0.44s both;
-        }
-        @keyframes champRailIn { from { opacity: 0.45; } to { opacity: 1; } }
         .champ-crown { margin-bottom: calc(var(--cardw) * 0.146); gap: calc(var(--cardw) * 0.0573); }
         .champ-crown::before {
           content: ''; position: absolute; left: 50%; top: 50%; translate: -50% -50%;
@@ -1268,102 +1229,69 @@ export default function ViewerPage() {
         }
       `}</style>
 
-      {/* 헤더 — 좌: 대회 아이덴티티 / 우: 라이브 상태. 배너 행을 없애 브래킷에 세로를 넘긴다 */}
-      {/* relative z-10: 대결 배경 레이어(fixed z-0) 위에 확실히 올린다 */}
-      <header className="relative z-10 mb-2 flex flex-col gap-3 lg:mb-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="font-en text-[10px] font-bold text-white/35 lg:text-[11px] 2xl:text-[13px]">
-            2026 LIKELION UNIV. 14TH HACKATHON
-          </p>
-          {/* 워드마크 높이는 기존 Anton 4xl/6xl 의 대문자 높이(약 26/43px)에 맞춘다 */}
-          <h1 className="mt-2 text-(--orange)">
-            <Wordmark className="h-7 w-auto lg:h-11 2xl:h-13" />
-          </h1>
-          <p className="mt-2 text-[13px] font-bold text-white/55 lg:text-sm 2xl:text-base">
-            본선 토너먼트 · 8.25 COEX MAGOK
-          </p>
-        </div>
-
-        {live ? (
-          <div className="flex items-center gap-4 rounded-xl border border-(--live)/40 bg-(--live)/8 px-5 py-3.5">
-            <span className="live-pulse rounded bg-(--live) px-2 py-1 text-xs font-extrabold text-white">
-              LIVE
-            </span>
-            <div className="min-w-0">
-              <p className="truncate text-lg font-extrabold tracking-tight lg:text-2xl 2xl:text-3xl">
-                {teamName(state, live.a)} <span className="mx-1 font-bold text-white/30">vs</span>{' '}
-                {teamName(state, live.b)}
-              </p>
-              <p className="font-en text-[11px] font-bold text-white/35 2xl:text-[13px]">
-                {live.id} · {live.round === 3 ? 'FINAL' : `ROUND ${live.round}`}
-              </p>
-            </div>
-          </div>
-        ) : sequence || drawSeq ? null : (
-          <p className="text-sm font-bold text-white/30 2xl:text-lg">다음 경기를 준비 중입니다</p>
-        )}
-      </header>
-
-      {/* 본문 우선순위: 공개 시퀀스 > 추첨 시퀀스 > live 대결 포커스 > 대진표 (§6.1) */}
-      {sequence ? (
-        <RevealSequence state={state} match={sequence} />
+      {/* 헤더·푸터·안내 문구는 전부 제거 (8/22 운영자: 무대에 필요없는 멘트 삭제) —
+          화면은 연출과 대진표만 남긴다. 본문 우선순위:
+          표 정지 화면 > 결과 화면 > 추첨 시퀀스 > live 대결 포커스 > 대진표 (§6.1) */}
+      {frozen ? (
+        <FreezeReveal state={state} match={frozen} />
+      ) : resultScene ? (
+        <ResultScene state={state} match={resultScene} />
       ) : drawSeq ? (
         <DrawSequence state={state} semis={drawSeq} />
       ) : live ? (
         <FocusLive state={state} match={live} />
       ) : (
         <>
-      {/* 대진표 — xl(1280px) 이상은 피라미드형 (8/20 결정). 결승(상) ← 준결승(중) ← R1 개별(하).
-          xl 미만은 물리적으로 좁아 세로 스택 유지 (실사용 노트북 제보로 lg → xl 상향 이력) */}
+      {/* 대진표 — xl(1280px) 이상은 피라미드형. 8/22 개편: 세 라운드 전부 R1 과 같은
+          개별 카드 열(PairColumn)로 통일. 승자 슬롯 라벨은 R1 = 트랙명(같은 트랙 대결),
+          R2/F = 진출처. xl 미만은 물리적으로 좁아 세로 스택 유지 */}
       <div className="pyramid-zoom hidden flex-1 flex-col justify-center py-2 xl:flex">
-        <p className="font-display mb-1 text-center text-xl text-white/35">FINAL</p>
-        <div className="flex justify-center">
-          <div className="w-95 rounded-2xl border border-(--orange)/25 p-1.5 2xl:w-105">
-            <MatchCard
-              state={state}
-              match={final}
-              size="lg"
-              revealing={revealingId === 'F'}
-              undrawnLabel="결선 대진 확정 전"
+        {/* 연결선 + 3개 라운드를 절반 셀 그리드로 — 연결선 끝점 = 준결승 열 중심 =
+            하위 두 열 중점이 수치 없이 자동 성립 (8/22 정렬 결정 유지) */}
+        <div className="relative mx-auto grid w-fit grid-cols-2 gap-x-7 2xl:gap-x-10">
+          {/* 결선 열 — 두 셀에 걸쳐 중앙 */}
+          <div className="col-span-2 flex justify-center">
+            <PairColumn state={state} match={final} slotLabel="CHAMPION" />
+          </div>
+          {/* 연결선 줄 — 자체 그리드(같은 gap)라 절대 요소의 top 기준이 이 줄이 된다 */}
+          <div className="relative col-span-2 grid grid-cols-2 gap-x-7 2xl:gap-x-10">
+            <ConnectorHalf side="l" drawn={final.a !== null && final.b !== null} />
+            <ConnectorHalf side="r" drawn={final.a !== null && final.b !== null} />
+            {/* 그리드 gap 이 끊는 가로선 중앙 구간 + 결선으로 오르는 스텁 */}
+            <div
+              className="absolute left-1/2 w-7 -translate-x-1/2 2xl:w-10"
+              style={{ top: 14, borderTop: connLine(final.a !== null && final.b !== null) }}
+              aria-hidden
+            />
+            <div
+              className="absolute left-1/2 top-0"
+              style={{ height: 14, borderLeft: connLine(final.a !== null && final.b !== null) }}
+              aria-hidden
             />
           </div>
-        </div>
-        {/* 연결선 + 준결승 + R1 을 절반 셀 2개짜리 그리드로 — 준결승이 자기 아래
-            두 열의 정중앙에 선다 (2026-08-22 운영자 결정, 8/20 '정렬 안 함'을 번복).
-            단 R1↔R2 를 선으로 잇지 않는 것은 유지 — 열 위 정렬은 허용하되 고정
-            진출로 읽히는 연결선은 여전히 금지. 절반 셀 구조라 연결선 끝점 = 셀
-            중심 = 준결승 중심 = 하위 두 열 중점이 수치 없이 자동 성립한다 */}
-        <div className="relative mx-auto grid w-fit grid-cols-2 gap-x-7 2xl:gap-x-10">
-          <ConnectorHalf side="l" drawn={final.a !== null && final.b !== null} />
-          <ConnectorHalf side="r" drawn={final.a !== null && final.b !== null} />
-          {/* 그리드 gap 이 끊는 가로선 중앙 구간 + 결승으로 오르는 스텁 */}
-          <div
-            className="absolute left-1/2 w-7 -translate-x-1/2 2xl:w-10"
-            style={{ top: 14, borderTop: connLine(final.a !== null && final.b !== null) }}
-            aria-hidden
-          />
-          <div
-            className="absolute left-1/2 top-0"
-            style={{ height: 14, borderLeft: connLine(final.a !== null && final.b !== null) }}
-            aria-hidden
-          />
           {[semi1, semi2].map((semi) => (
             <div key={semi.id} className="flex justify-center">
-              <div className="w-72 2xl:w-80">
-                <MatchCard
-                  state={state}
-                  match={semi}
-                  revealing={revealingId === semi.id}
-                  undrawnLabel="추첨 대기"
-                />
-              </div>
+              <PairColumn state={state} match={semi} slotLabel="FINAL 진출" />
             </div>
           ))}
           {[state.matches.filter((m) => m.round === 1).slice(0, 2), state.matches.filter((m) => m.round === 1).slice(2)].map(
             (half, i) => (
-              <div key={i} className="mt-7 flex gap-7 2xl:gap-10">
+              <div key={i} className="mt-6 flex gap-7 2xl:gap-10">
                 {half.map((m) => (
-                  <PairColumn key={m.id} state={state} match={m} />
+                  <PairColumn
+                    key={m.id}
+                    state={state}
+                    match={m}
+                    showDest
+                    slotLabel={
+                      <span
+                        className="font-en tracking-wider"
+                        style={{ color: TRACK_COLORS[teamAt(state, m.a)?.track ?? 'OPEN'] }}
+                      >
+                        {teamAt(state, m.a)?.track ?? '트랙 미정'}
+                      </span>
+                    }
+                  />
                 ))}
               </div>
             ),
@@ -1371,7 +1299,7 @@ export default function ViewerPage() {
         </div>
       </div>
 
-      {/* 세로 스택 — xl 미만 (폰 + 좁은 노트북/태블릿) */}
+      {/* 세로 스택 — xl 미만 (좁은 노트북/태블릿 폴백) */}
       <div className="mx-auto w-full max-w-md space-y-7 pt-4 xl:hidden">
         {[
           { label: 'ROUND 1', matches: state.matches.filter((m) => m.round === 1), undrawn: undefined },
@@ -1382,13 +1310,7 @@ export default function ViewerPage() {
             <h2 className="font-display mb-2.5 text-sm text-white/35">{group.label}</h2>
             <div className="space-y-3">
               {group.matches.map((m) => (
-                <MatchCard
-                  key={m.id}
-                  state={state}
-                  match={m}
-                  revealing={revealingId === m.id}
-                  undrawnLabel={group.undrawn}
-                />
+                <MatchCard key={m.id} state={state} match={m} undrawnLabel={group.undrawn} />
               ))}
             </div>
           </section>
@@ -1397,14 +1319,9 @@ export default function ViewerPage() {
         </>
       )}
 
-      {/* 부스 투표 안내는 제거 (8/20 확정: 부스 투표 안 함) */}
-      <footer className="relative z-10 mt-4 flex items-center justify-between text-[11px] text-white/22 2xl:text-[13px]">
-        <span>각 경기 종료 후 즉시 발표</span>
-        <span>2026 LIKELION UNIV. 14TH HACKATHON</span>
-      </footer>
-
-      {/* 우승 테이크오버는 결선 공개 시퀀스가 끝난 뒤에 등장 */}
-      {champion && !sequence && <ChampionTakeover state={state} final={final} />}
+      {/* 우승 테이크오버 — 결선 발표(announced) 즉시. 정지 화면과는 공존 불가
+          (결선은 발표 액션이 곧 우승 무대 전환이다) */}
+      {champion && <ChampionTakeover state={state} final={final} />}
     </main>
   );
 }

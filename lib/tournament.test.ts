@@ -7,8 +7,11 @@ import assert from 'node:assert/strict';
 
 import {
   addJudge,
+  announceResult,
   createInitialState,
   drawRound2,
+  finalRevealOrder,
+  isAnnounced,
   findJudge,
   getMatch,
   judgeSlug,
@@ -453,4 +456,67 @@ test('setTimer: 진행 중 경기가 없으면 거부한다', () => {
 test('초기화하면 타이머도 해제된다', () => {
   const s = startMatch(seeded(), 'R1-1', 1000);
   assert.equal(reset(s).timer, null);
+});
+
+// ------------------------------------------------------------
+// 2단계 공개 (8/22) — announceResult / isAnnounced
+// ------------------------------------------------------------
+
+test('발표 확정: done 전에는 거부한다', () => {
+  expectError('NOT_DONE', () => announceResult(seeded(), 'R1-1'));
+  const live = startMatch(seeded(), 'R1-1');
+  expectError('NOT_DONE', () => announceResult(live, 'R1-1'));
+});
+
+test('발표 확정: 표 있는 공개 → announce 후에만 isAnnounced', () => {
+  let s = startMatch(seeded(), 'R1-1');
+  s = revealResult(s, 'R1-1', 'A', ['A', 'B', 'A']);
+  assert.equal(isAnnounced(getMatch(s, 'R1-1')), false); // 카드 정지 화면 단계
+  s = announceResult(s, 'R1-1');
+  assert.equal(isAnnounced(getMatch(s, 'R1-1')), true);
+  expectError('ALREADY_ANNOUNCED', () => announceResult(s, 'R1-1'));
+});
+
+test('발표 확정: 표 0건(백업 모드)은 정지 화면 없이 즉시 발표로 친다', () => {
+  let s = startMatch(seeded(), 'R1-1');
+  s = revealResult(s, 'R1-1', 'A');
+  assert.equal(isAnnounced(getMatch(s, 'R1-1')), true);
+  expectError('ALREADY_ANNOUNCED', () => announceResult(s, 'R1-1'));
+});
+
+// ------------------------------------------------------------
+// 결선 표 공개 순서 (8/22) — finalRevealOrder
+// ------------------------------------------------------------
+
+test('결선 순서: 3:2 는 패승패승승 — 마지막 장이 승부를 확정한다', () => {
+  assert.deepEqual(finalRevealOrder(['A', 'A', 'B', 'A', 'B'], 'A'), ['B', 'A', 'B', 'A', 'A']);
+});
+
+test('결선 순서: 압도(4:1/5:0)면 표 적은 쪽 먼저', () => {
+  assert.deepEqual(finalRevealOrder(['A', 'A', 'A', 'B', 'A'], 'A'), ['B', 'A', 'A', 'A', 'A']);
+  assert.deepEqual(finalRevealOrder(['A', 'A', 'A', 'A', 'A'], 'A'), ['A', 'A', 'A', 'A', 'A']);
+});
+
+test('결선 순서: 승자가 B 여도 같은 규칙', () => {
+  assert.deepEqual(finalRevealOrder(['B', 'A', 'B', 'B', 'A'], 'B'), ['A', 'B', 'A', 'B', 'B']);
+});
+
+// ------------------------------------------------------------
+// 수동 대진 (8/22) — drawRound2 pairs
+// ------------------------------------------------------------
+
+test('수동 대진: 지정한 짝이 그대로 들어간다', () => {
+  const base = afterRound1(); // R1 승자 = 0, 2, 4, 6 (전부 A 승)
+  const s = drawRound2(base, Math.random, [
+    [0, 4],
+    [2, 6],
+  ]);
+  assert.deepEqual([getMatch(s, 'R2-1').a, getMatch(s, 'R2-1').b], [0, 4]);
+  assert.deepEqual([getMatch(s, 'R2-2').a, getMatch(s, 'R2-2').b], [2, 6]);
+});
+
+test('수동 대진: 승자 아님·중복은 거부한다', () => {
+  const base = afterRound1();
+  expectError('INVALID_PAIRS', () => drawRound2(base, Math.random, [[0, 1], [2, 6]])); // 1 은 패자
+  expectError('INVALID_PAIRS', () => drawRound2(base, Math.random, [[0, 0], [2, 6]])); // 중복
 });

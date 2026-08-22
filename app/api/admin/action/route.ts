@@ -11,6 +11,8 @@ import {
   startMatch,
   setTimer,
   revealResult,
+  announceResult,
+  finalRevealOrder,
   drawRound2,
   shuffle,
   setFinal,
@@ -115,8 +117,17 @@ export async function POST(request: Request): Promise<Response> {
           // 스크린 투표 오픈 연출용 익명 표 — 명의를 떼고 순서를 셔플해 공개 상태에 싣는다.
           // 제출 순서(ts)가 남으면 운영 화면을 본 사람이 명의를 역추적할 수 있어 순서도 지운다 (§3).
           const rows = await votesForMatch(matchId);
-          const anonVotes = shuffle(rows.map((r) => r.winner));
+          // 결선은 연출 정렬(패자 우선 번갈아 — 마지막 장이 승부 확정, §6.1 8/22),
+          // 나머지는 셔플. 어느 쪽이든 명의·제출 순서는 사라진다 (§3)
+          const marks = rows.map((r) => r.winner);
+          const anonVotes = matchId === 'F' ? finalRevealOrder(marks, winner) : shuffle(marks);
           return ok({ state: adminView(await mutate((s) => revealResult(s, matchId, winner, anonVotes))) });
+        }
+
+        case 'announceResult': {
+          // 2단계 공개의 2단계 (§6.1 8/22) — 카드 정지 화면에서 결과 화면으로
+          const matchId = asString(body.matchId, 'matchId', 8);
+          return ok({ state: adminView(await mutate((s) => announceResult(s, matchId))) });
         }
 
         case 'setTimer': {
@@ -125,8 +136,21 @@ export async function POST(request: Request): Promise<Response> {
           return ok({ state: adminView(await mutate((s) => setTimer(s, label))) });
         }
 
-        case 'drawRound2':
+        case 'drawRound2': {
+          // pairs(선택): 수동 대진 (8/22 운영자 결정) — [[a,b],[c,d]] 팀 인덱스.
+          // 검증은 drawRound2 가 한다 (R1 승자 4팀 정확히 한 번씩)
+          const pairs = body.pairs;
+          if (pairs !== undefined) {
+            const okShape =
+              Array.isArray(pairs) &&
+              pairs.length === 2 &&
+              pairs.every((p) => Array.isArray(p) && p.length === 2 && p.every((n) => typeof n === 'number'));
+            if (!okShape) return fail(400, 'BAD_PAIRS', 'pairs 는 [[a,b],[c,d]] 숫자 배열이어야 합니다.');
+            const typed = pairs as [[number, number], [number, number]];
+            return ok({ state: adminView(await mutate((s) => drawRound2(s, Math.random, typed))) });
+          }
           return ok({ state: adminView(await mutate((s) => drawRound2(s))) });
+        }
 
         case 'setFinal':
           return ok({ state: adminView(await mutate((s) => setFinal(s))) });

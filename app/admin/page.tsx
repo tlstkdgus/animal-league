@@ -13,7 +13,7 @@ import universityLogos from '@/lib/universityLogos';
 import { characterKeyForSchool, characterName } from '@/lib/characterMap';
 import { noteServerNow, serverNow } from '@/lib/clock';
 import type { Match, Team, Track, Side, TimerState } from '@/lib/tournament';
-import { TRACKS, TIMER_PRESETS } from '@/lib/tournament';
+import { TRACKS, TIMER_PRESETS, isAnnounced, winningTeamId } from '@/lib/tournament';
 
 // ------------------------------------------------------------
 // 워드마크 — components/ui.tsx Wordmark 의 사본 (admin 은 화면 간 PR 분리
@@ -540,6 +540,73 @@ function TimerControl({
   );
 }
 
+/**
+ * 수동 대진 (8/22 운영자 결정) — R1 승자 4팀 중 R2-1 의 두 팀을 고르면 나머지가 R2-2.
+ * 규정(§2) 기본은 랜덤 추첨 — 이 패널은 운영 재량용이고, 스크린 연출은 어느 쪽이든
+ * 동일한 셔플 애니메이션이다 (무작위성의 출처만 다름).
+ */
+function ManualDraw({
+  state,
+  busy,
+  onDraw,
+}: {
+  state: AdminState;
+  busy: boolean;
+  onDraw: (pairs: [[number, number], [number, number]], label: string) => void;
+}) {
+  const winners = state.matches
+    .filter((m) => m.round === 1)
+    .map((m) => winningTeamId(m))
+    .filter((n): n is number => n !== null);
+  const [picked, setPicked] = useState<number[]>([]);
+  if (winners.length !== 4) return null;
+
+  const toggle = (n: number) =>
+    setPicked((p) => (p.includes(n) ? p.filter((x) => x !== n) : p.length < 2 ? [...p, n] : p));
+  const rest = winners.filter((n) => !picked.includes(n));
+  const name = (n: number) => teamLabel(state.teams[n] ?? null, n);
+
+  return (
+    <div className="mb-3 rounded-xl border border-white/10 bg-black/20 p-3">
+      <p className="mb-2 text-xs font-bold text-white/50">
+        수동 대진 — <b className="text-white/75">R2-1 에 붙일 두 팀</b>을 고르면 나머지가 R2-2 로 갑니다.
+        (기본은 위의 🎲 랜덤 추첨 · 스크린 연출은 동일)
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        {winners.map((n) => (
+          <button
+            key={n}
+            disabled={busy}
+            onClick={() => toggle(n)}
+            className={`rounded-lg border px-3 py-1.5 text-xs font-bold ${
+              picked.includes(n)
+                ? 'border-[var(--orange)] bg-[var(--orange-glow)] text-[var(--orange)]'
+                : 'border-white/15 text-white/60'
+            }`}
+          >
+            {name(n)}
+          </button>
+        ))}
+        <button
+          disabled={picked.length !== 2 || busy}
+          onClick={() =>
+            onDraw(
+              [
+                [picked[0], picked[1]],
+                [rest[0], rest[1]],
+              ],
+              `R2-1: ${name(picked[0])} vs ${name(picked[1])}\nR2-2: ${name(rest[0])} vs ${name(rest[1])}`,
+            )
+          }
+          className="rounded-lg border border-[var(--orange)]/50 px-3 py-1.5 text-xs font-bold text-[var(--orange)] hover:bg-[var(--orange-glow)] disabled:opacity-30"
+        >
+          이 대진으로 확정
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function MatchCard({
   match,
   state,
@@ -547,6 +614,7 @@ function MatchCard({
   onStart,
   onReveal,
   onSetTimer,
+  onAnnounce,
 }: {
   match: Match;
   state: AdminState;
@@ -554,6 +622,7 @@ function MatchCard({
   onStart: () => void;
   onReveal: (side: Side, tallyText: string) => void;
   onSetTimer: (label: string) => void;
+  onAnnounce: () => void;
 }) {
   const resolved = match.a !== null && match.b !== null;
   const winnerIndex = match.winner === 'A' ? match.a : match.winner === 'B' ? match.b : null;
@@ -605,6 +674,23 @@ function MatchCard({
           🏆 {teamLabel(state.teams[winnerIndex] ?? null, winnerIndex)} 진출
         </div>
       )}
+
+      {/* 2단계 공개의 2단계 (8/22, §6.1) — 공개 후 스크린은 카드 정지 화면에 머문다.
+          심사위원 코멘트가 끝나면 이 버튼으로 결과 화면(결선은 우승 무대)을 송출 */}
+      {match.status === 'done' && !isAnnounced(match) && (
+        <div className="mt-2">
+          <button
+            disabled={busy}
+            onClick={onAnnounce}
+            className="w-full animate-pulse rounded-lg bg-[var(--orange)] py-2 text-sm font-extrabold text-white disabled:opacity-40"
+          >
+            📣 발표 — {match.id === 'F' ? '우승 무대 송출' : '결과 화면 송출'}
+          </button>
+          <p className="mt-1 text-[11px] text-white/40">
+            스크린은 표 카드 정지 화면입니다. 심사위원 코멘트가 끝나면 누르세요.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -641,6 +727,22 @@ function MatchesTab({
     }
   };
 
+  // 발표 (2단계 공개의 2단계) — 결선만 확인을 거친다 (우승 무대 전환이라).
+  // R1·R2 는 진행 속도 우선으로 즉시 — 이미 공개된 결과의 송출 타이밍일 뿐이다
+  const announceMatch = (match: Match) => {
+    if (match.id === 'F') {
+      askConfirm({
+        title: '우승 발표',
+        body: '스크린이 우승 무대 연출로 전환됩니다.\nMC 카운트다운 "3" 시점에 누르면 "1!"에 맞춰 뜹니다 (반영 최대 3초).',
+        confirmLabel: '발표',
+        danger: true,
+        onConfirm: () => run({ action: 'announceResult', matchId: match.id }),
+      });
+    } else {
+      run({ action: 'announceResult', matchId: match.id });
+    }
+  };
+
   const revealWithConfirm = (match: Match) => (side: Side, tallyText: string) => {
     const index = side === 'A' ? match.a : match.b;
     const name = teamLabel(state.teams[index ?? -1] ?? null, index);
@@ -672,7 +774,7 @@ function MatchesTab({
       {section('라운드 1 — 같은 트랙 1:1')}
       <div className="grid gap-3 sm:grid-cols-2">
         {r1.map((m) => (
-          <MatchCard key={m.id} match={m} state={state} busy={busy} onStart={() => startWithGuard(m)} onReveal={revealWithConfirm(m)} onSetTimer={(label) => run({ action: 'setTimer', label })} />
+          <MatchCard key={m.id} match={m} state={state} busy={busy} onStart={() => startWithGuard(m)} onReveal={revealWithConfirm(m)} onSetTimer={(label) => run({ action: 'setTimer', label })} onAnnounce={() => announceMatch(m)} />
         ))}
       </div>
 
@@ -693,9 +795,24 @@ function MatchesTab({
           🎲 대진 추첨
         </button>,
       )}
+      {canDraw && (
+        <ManualDraw
+          state={state}
+          busy={busy}
+          onDraw={(pairs, label) =>
+            askConfirm({
+              title: '수동 대진 확정',
+              body: `${label}\n\n규정 기본은 랜덤 추첨입니다 (§2). 수동 확정도 한 번만 가능하며 되돌릴 수 없습니다.\n스크린 연출은 랜덤 추첨과 동일하게 재생됩니다.`,
+              confirmLabel: '이 대진으로 확정',
+              danger: true,
+              onConfirm: () => run({ action: 'drawRound2', pairs }),
+            })
+          }
+        />
+      )}
       <div className="grid gap-3 sm:grid-cols-2">
         {r2.map((m) => (
-          <MatchCard key={m.id} match={m} state={state} busy={busy} onStart={() => startWithGuard(m)} onReveal={revealWithConfirm(m)} onSetTimer={(label) => run({ action: 'setTimer', label })} />
+          <MatchCard key={m.id} match={m} state={state} busy={busy} onStart={() => startWithGuard(m)} onReveal={revealWithConfirm(m)} onSetTimer={(label) => run({ action: 'setTimer', label })} onAnnounce={() => announceMatch(m)} />
         ))}
       </div>
 
@@ -717,7 +834,7 @@ function MatchesTab({
         </button>,
       )}
       {final && (
-        <MatchCard match={final} state={state} busy={busy} onStart={() => startWithGuard(final)} onReveal={revealWithConfirm(final)} onSetTimer={(label) => run({ action: 'setTimer', label })} />
+        <MatchCard match={final} state={state} busy={busy} onStart={() => startWithGuard(final)} onReveal={revealWithConfirm(final)} onSetTimer={(label) => run({ action: 'setTimer', label })} onAnnounce={() => announceMatch(final)} />
       )}
     </div>
   );
