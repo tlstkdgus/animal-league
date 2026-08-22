@@ -324,11 +324,11 @@ function TeamHero({
     >
       <CharacterArt
         characterKey={team?.character ?? null}
-        className={`aspect-2/3 ${compact ? 'w-36 lg:w-44' : 'w-44 lg:w-60'} ${winner ? 'shadow-[0_0_70px_rgba(236,108,1,0.4)]' : ''}`}
-        sizes="(min-width: 1024px) 240px, 176px"
+        className={`aspect-2/3 ${compact ? 'w-36 lg:w-44 2xl:w-56' : 'w-44 lg:w-60 2xl:w-72'} ${winner ? 'shadow-[0_0_70px_rgba(236,108,1,0.4)]' : ''}`}
+        sizes="(min-width: 1536px) 288px, (min-width: 1024px) 240px, 176px"
       />
       <p
-        className={`mt-5 max-w-full font-extrabold leading-tight tracking-tight ${compact ? 'text-2xl lg:text-3xl' : 'text-3xl lg:text-5xl'}`}
+        className={`mt-5 max-w-full font-extrabold leading-tight tracking-tight ${compact ? 'text-2xl lg:text-3xl 2xl:text-4xl' : 'text-3xl lg:text-5xl 2xl:text-6xl'}`}
         style={{ textWrap: 'balance' }}
       >
         {teamName(state, index)}
@@ -396,10 +396,10 @@ function FocusLive({ state, match }: { state: PublicState; match: Match }) {
               표기는 운영 코드(R1-2)를 풀어 쓴 "ROUND 1-2" — 라운드만 쓰면 1라운드
               네 경기가 전부 같은 화면이 되고, 코드만 쓰면 관객이 못 읽는다 */}
           <div className="flex flex-col items-center gap-3">
-            <span className="font-display text-3xl text-(--orange) lg:text-5xl">
+            <span className="font-display text-3xl text-(--orange) lg:text-5xl 2xl:text-6xl">
               {match.round === 3 ? 'FINAL' : `ROUND ${match.round}-${match.id.split('-')[1]}`}
             </span>
-            <span className="font-display text-6xl text-white/85 lg:text-8xl">VS</span>
+            <span className="font-display text-6xl text-white/85 lg:text-8xl 2xl:text-9xl">VS</span>
           </div>
           <TeamHero state={state} index={match.b} />
         </div>
@@ -455,7 +455,7 @@ function RevealSequence({ state, match }: { state: PublicState; match: Match }) 
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-8 py-6 lg:gap-10">
-      <p className="champion-rise text-2xl font-extrabold tracking-tight lg:text-4xl">
+      <p className="champion-rise text-2xl font-extrabold tracking-tight lg:text-4xl 2xl:text-5xl">
         {votes.length > 0 ? '투표를 공개합니다' : '결과를 발표합니다'}
       </p>
 
@@ -463,7 +463,7 @@ function RevealSequence({ state, match }: { state: PublicState; match: Match }) 
         <TeamHero state={state} index={match.a} compact dimmed={showWinner && match.winner !== 'A'} winner={showWinner && match.winner === 'A'} />
         <div className="flex flex-col items-center gap-2">
           {votes.length > 0 && (
-            <div className="font-en flex items-center gap-5 text-5xl font-extrabold tabular-nums lg:text-6xl">
+            <div className="font-en flex items-center gap-5 text-5xl font-extrabold tabular-nums lg:text-6xl 2xl:text-7xl">
               <span style={{ color: SIDE_COLORS.A }}>{showWinner ? tally('A') : openTally('A')}</span>
               <span className="text-2xl text-white/25">:</span>
               <span style={{ color: SIDE_COLORS.B }}>{showWinner ? tally('B') : openTally('B')}</span>
@@ -482,7 +482,7 @@ function RevealSequence({ state, match }: { state: PublicState; match: Match }) 
           {votes.map((side, i) => (
             <div
               key={i}
-              className="chip-outer relative aspect-2/3 w-16 lg:w-20"
+              className="chip-outer relative aspect-2/3 w-16 lg:w-20 2xl:w-24"
               style={{ animationDelay: `${i * 0.06}s` }}
             >
               <div
@@ -538,8 +538,10 @@ const DRAW_FLIP_BASE_S = 2.6;
 function DrawCard({ state, index, order }: { state: PublicState; index: number | null; order: number }) {
   const team = teamAt(state, index);
   return (
+    // 2xl 확대: 셔플 키프레임(drawShufN)은 lg w-36 기준 픽셀이라 2xl(176px)에서는
+    // 교차 폭이 약간 얕아진다 — 시각적으로 허용 범위 (무대 확대가 우선, 8/22)
     <div
-      className="draw-outer relative aspect-2/3 w-28 lg:w-36"
+      className="draw-outer relative aspect-2/3 w-28 lg:w-36 2xl:w-44"
       style={{ animation: `drawShuf${order} 2.2s cubic-bezier(0.35, 0, 0.25, 1) 0.2s both` }}
     >
       <div
@@ -564,7 +566,7 @@ function DrawCard({ state, index, order }: { state: PublicState; index: number |
       </div>
       {/* 팀명은 카드가 뒤집힌 뒤에 떠오른다 */}
       <p
-        className="draw-name absolute -bottom-8 left-1/2 w-40 -translate-x-1/2 text-center text-sm font-extrabold lg:text-base"
+        className="draw-name absolute -bottom-8 left-1/2 w-40 -translate-x-1/2 text-center text-sm font-extrabold lg:text-base 2xl:text-lg"
         style={{ animationDelay: `${DRAW_FLIP_BASE_S + order * 0.5 + 0.45}s` }}
       >
         {teamName(state, index)}
@@ -590,7 +592,7 @@ function DrawSequence({ state, semis }: { state: PublicState; semis: [Match, Mat
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-12 py-6">
-      <p className="champion-rise text-2xl font-extrabold tracking-tight lg:text-4xl">2라운드 대진을 추첨합니다</p>
+      <p className="champion-rise text-2xl font-extrabold tracking-tight lg:text-4xl 2xl:text-5xl">2라운드 대진을 추첨합니다</p>
       <div className="flex items-start justify-center gap-14 lg:gap-24">
         {semis.map((semi, s) => (
           <div key={semi.id} className="flex flex-col items-center gap-5">
@@ -935,6 +937,11 @@ export default function ViewerPage() {
     <main className="flex min-h-dvh flex-col px-5 pb-3 pt-5 lg:px-10">
       <style>{`
         .font-display { font-family: var(--font-anton), var(--font-suit), sans-serif; }
+        /* 무대 확대 (8/22) — 프로젝터(≥1880px)에서 피라미드 전체를 1.18배.
+           zoom 은 레이아웃 크기가 함께 커져 연결선↔준결승 정합이 그대로 유지된다
+           (개별 값 확대는 PyramidConnector 폭 재계산이 필요해 어긋날 위험).
+           1.18 상한 근거: R1 행 폭 1540px × 1.18 = 1817 ≤ 콘텐츠 폭 1840(px-10 제외) */
+        @media (min-width: 1880px) { .pyramid-zoom { zoom: 1.18; } }
         .live-pulse { animation: livePulse 1.2s ease-in-out infinite; }
         @keyframes livePulse { 50% { opacity: 0.45; } }
         .card-live { box-shadow: 0 0 28px rgba(255,59,48,0.22); }
@@ -1238,14 +1245,14 @@ export default function ViewerPage() {
       {/* relative z-10: 대결 배경 레이어(fixed z-0) 위에 확실히 올린다 */}
       <header className="relative z-10 mb-2 flex flex-col gap-3 lg:mb-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="font-en text-[10px] font-bold text-white/35 lg:text-[11px]">
+          <p className="font-en text-[10px] font-bold text-white/35 lg:text-[11px] 2xl:text-[13px]">
             2026 LIKELION UNIV. 14TH HACKATHON
           </p>
           {/* 워드마크 높이는 기존 Anton 4xl/6xl 의 대문자 높이(약 26/43px)에 맞춘다 */}
           <h1 className="mt-2 text-(--orange)">
-            <Wordmark className="h-7 w-auto lg:h-11" />
+            <Wordmark className="h-7 w-auto lg:h-11 2xl:h-13" />
           </h1>
-          <p className="mt-2 text-[13px] font-bold text-white/55 lg:text-sm">
+          <p className="mt-2 text-[13px] font-bold text-white/55 lg:text-sm 2xl:text-base">
             본선 토너먼트 · 8.25 COEX MAGOK
           </p>
         </div>
@@ -1256,17 +1263,17 @@ export default function ViewerPage() {
               LIVE
             </span>
             <div className="min-w-0">
-              <p className="truncate text-lg font-extrabold tracking-tight lg:text-2xl">
+              <p className="truncate text-lg font-extrabold tracking-tight lg:text-2xl 2xl:text-3xl">
                 {teamName(state, live.a)} <span className="mx-1 font-bold text-white/30">vs</span>{' '}
                 {teamName(state, live.b)}
               </p>
-              <p className="font-en text-[11px] font-bold text-white/35">
+              <p className="font-en text-[11px] font-bold text-white/35 2xl:text-[13px]">
                 {live.id} · {live.round === 3 ? 'FINAL' : `ROUND ${live.round}`}
               </p>
             </div>
           </div>
         ) : sequence || drawSeq ? null : (
-          <p className="text-sm font-bold text-white/30">다음 경기를 준비 중입니다</p>
+          <p className="text-sm font-bold text-white/30 2xl:text-lg">다음 경기를 준비 중입니다</p>
         )}
       </header>
 
@@ -1281,7 +1288,7 @@ export default function ViewerPage() {
         <>
       {/* 대진표 — xl(1280px) 이상은 피라미드형 (8/20 결정). 결승(상) ← 준결승(중) ← R1 개별(하).
           xl 미만은 물리적으로 좁아 세로 스택 유지 (실사용 노트북 제보로 lg → xl 상향 이력) */}
-      <div className="hidden flex-1 flex-col justify-center py-2 xl:flex">
+      <div className="pyramid-zoom hidden flex-1 flex-col justify-center py-2 xl:flex">
         <p className="font-display mb-2 text-center text-xl text-white/35">FINAL</p>
         <div className="flex justify-center">
           <div className="w-95 rounded-2xl border border-(--orange)/25 p-1.5 2xl:w-105">
@@ -1345,7 +1352,7 @@ export default function ViewerPage() {
       )}
 
       {/* 부스 투표 안내는 제거 (8/20 확정: 부스 투표 안 함) */}
-      <footer className="relative z-10 mt-4 flex items-center justify-between text-[11px] text-white/22">
+      <footer className="relative z-10 mt-4 flex items-center justify-between text-[11px] text-white/22 2xl:text-[13px]">
         <span>각 경기 종료 후 즉시 발표</span>
         <span>2026 LIKELION UNIV. 14TH HACKATHON</span>
       </footer>
