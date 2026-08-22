@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { CARD_RADIUS, CharacterArt, SchoolTag, Wordmark } from '@/components/ui';
-import { armSfx, playFlip } from '@/lib/sfx';
+import { armSfx, playFlip, playShuffle } from '@/lib/sfx';
 import { winningTeamId, type Match, type Team } from '@/lib/tournament';
 
 type PublicState = { teams: Team[]; matches: Match[]; rev: number };
@@ -565,6 +565,14 @@ function DrawCard({ state, index, order }: { state: PublicState; index: number |
  * 이미 만들었고, 화면의 섞임은 그 결과를 발표하는 연출일 뿐이다.
  */
 function DrawSequence({ state, semis }: { state: PublicState; semis: [Match, Match] }) {
+  // 셔플 소리 — 셔플 애니메이션(0.2s 딜레이, 2.2s)과 동기. 플립 소리는 카드 쪽
+  // animationstart 가 낸다. reduced-motion 은 셔플 모션 자체가 없으니 소리도 생략.
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const timer = setTimeout(() => playShuffle(), 200);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-12 py-6">
       <p className="champion-rise text-2xl font-extrabold tracking-tight lg:text-4xl">2라운드 대진을 추첨합니다</p>
