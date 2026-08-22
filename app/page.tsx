@@ -278,19 +278,24 @@ function PairColumn({
   );
 }
 
+const connLine = (drawn: boolean) =>
+  `2px ${drawn ? 'solid' : 'dashed'} ${drawn ? 'rgba(236,108,1,0.55)' : 'rgba(255,255,255,0.14)'}`;
+
 /**
- * 결승 ↔ 준결승 연결선 — 고정 구조라 항상 그린다 (결선 확정 전 점선).
- * 폭은 준결승 두 카드의 중심 간격과 일치해야 한다: xl 288+272=560, 2xl 320+320=640.
+ * 결승 ↔ 준결승 연결선 — 브래킷 그리드 첫 줄의 절반 셀. 셀 중심(= 준결승 카드
+ * 중심 = 하위 두 열의 중점)에서 세로로 내려가고 안쪽으로 가로선을 긋는다.
+ * 그리드 gap 이 끊는 중앙 구간과 결승으로 오르는 스텁은 그리드의 절대 요소가 채운다.
+ * 고정 구조라 항상 그린다 (결선 확정 전 점선).
  */
-function PyramidConnector({ drawn }: { drawn: boolean }) {
-  const border = drawn ? 'rgba(236,108,1,0.55)' : 'rgba(255,255,255,0.14)';
-  const line = `2px ${drawn ? 'solid' : 'dashed'} ${border}`;
+function ConnectorHalf({ side, drawn }: { side: 'l' | 'r'; drawn: boolean }) {
+  const line = connLine(drawn);
   return (
-    <div className="relative mx-auto h-8 w-140 2xl:w-160" aria-hidden>
-      <div className="absolute left-1/2 top-0" style={{ height: 14, borderLeft: line }} />
-      <div className="absolute left-0 right-0" style={{ top: 14, borderTop: line }} />
-      <div className="absolute bottom-0 left-0" style={{ top: 14, borderLeft: line }} />
-      <div className="absolute bottom-0 right-0" style={{ top: 14, borderRight: line }} />
+    <div className="relative h-8 w-full 2xl:h-9" aria-hidden>
+      <div
+        className="absolute"
+        style={{ top: 14, ...(side === 'l' ? { left: '50%', right: 0 } : { left: 0, right: '50%' }), borderTop: line }}
+      />
+      <div className="absolute bottom-0 left-1/2" style={{ top: 14, borderLeft: line }} />
     </div>
   );
 }
@@ -769,9 +774,18 @@ function ChampionTakeover({ state, final }: { state: PublicState; final: Match }
           <div className="champ-beam champ-beam--r" />
         </div>
 
-        {/* L8 HUD — 상단 레일 (원본 rail-top) */}
-        <div className="champ-rail font-en" aria-hidden>
-          2026 LIKELION UNIV. 14TH HACKATHON
+        {/* 좌상단 브랜드 블록 — 다른 화면들과 동일하게 고정 (2026-08-22 운영자 결정.
+            원본의 rail-top 텍스트 한 줄 대신 본 화면 헤더 블록을 그대로 쓴다) */}
+        <div className="champ-rail absolute left-5 top-5 lg:left-10">
+          <p className="font-en text-[10px] font-bold text-white/35 lg:text-[11px] 2xl:text-[13px]">
+            2026 LIKELION UNIV. 14TH HACKATHON
+          </p>
+          <h1 className="mt-2 text-(--orange)">
+            <Wordmark className="h-7 w-auto lg:h-11 2xl:h-13" />
+          </h1>
+          <p className="mt-2 text-[13px] font-bold text-white/55 lg:text-sm 2xl:text-base">
+            본선 토너먼트 · 8.25 COEX MAGOK
+          </p>
         </div>
 
         {/* 중앙 — CHAMPION → 카드 → 팀명 → 소속 */}
@@ -1064,10 +1078,6 @@ export default function ViewerPage() {
         }
         @keyframes champPoolIn { from { opacity: 0; transform: scaleX(0.3); } to { opacity: 1; transform: scaleX(1); } }
         .champ-rail {
-          position: absolute;
-          top: calc(var(--cardw) * 0.193); left: calc(var(--cardw) * 0.28);
-          font-size: calc(var(--cardw) * 0.042); font-weight: 600;
-          letter-spacing: 0.18em; color: rgba(245,239,230,0.5);
           opacity: 0; pointer-events: none;
           animation: champRailIn 0.9s ease-out 0.44s both;
         }
@@ -1301,27 +1311,46 @@ export default function ViewerPage() {
             />
           </div>
         </div>
-        <PyramidConnector drawn={final.a !== null && final.b !== null} />
-        {/* 준결승 두 카드 — 폭·간격이 PyramidConnector 폭과 맞물려 있다 (해당 주석 참조) */}
-        <div className="flex justify-center gap-68 2xl:gap-80">
+        {/* 연결선 + 준결승 + R1 을 절반 셀 2개짜리 그리드로 — 준결승이 자기 아래
+            두 열의 정중앙에 선다 (2026-08-22 운영자 결정, 8/20 '정렬 안 함'을 번복).
+            단 R1↔R2 를 선으로 잇지 않는 것은 유지 — 열 위 정렬은 허용하되 고정
+            진출로 읽히는 연결선은 여전히 금지. 절반 셀 구조라 연결선 끝점 = 셀
+            중심 = 준결승 중심 = 하위 두 열 중점이 수치 없이 자동 성립한다 */}
+        <div className="relative mx-auto grid w-fit grid-cols-2 gap-x-7 2xl:gap-x-10">
+          <ConnectorHalf side="l" drawn={final.a !== null && final.b !== null} />
+          <ConnectorHalf side="r" drawn={final.a !== null && final.b !== null} />
+          {/* 그리드 gap 이 끊는 가로선 중앙 구간 + 결승으로 오르는 스텁 */}
+          <div
+            className="absolute left-1/2 w-7 -translate-x-1/2 2xl:w-10"
+            style={{ top: 14, borderTop: connLine(final.a !== null && final.b !== null) }}
+            aria-hidden
+          />
+          <div
+            className="absolute left-1/2 top-0"
+            style={{ height: 14, borderLeft: connLine(final.a !== null && final.b !== null) }}
+            aria-hidden
+          />
           {[semi1, semi2].map((semi) => (
-            <div key={semi.id} className="w-72 2xl:w-80">
-              <MatchCard
-                state={state}
-                match={semi}
-                revealing={revealingId === semi.id}
-                undrawnLabel="추첨 대기"
-              />
+            <div key={semi.id} className="flex justify-center">
+              <div className="w-72 2xl:w-80">
+                <MatchCard
+                  state={state}
+                  match={semi}
+                  revealing={revealingId === semi.id}
+                  undrawnLabel="추첨 대기"
+                />
+              </div>
             </div>
           ))}
-        </div>
-        {/* R1 하단 — 준결승과 선으로 잇지 않는다 (R2 랜덤 추첨, 파일 상단 주석 참조) */}
-        <div className="mt-7 flex justify-center gap-7 2xl:mt-9 2xl:gap-10">
-          {state.matches
-            .filter((m) => m.round === 1)
-            .map((m) => (
-              <PairColumn key={m.id} state={state} match={m} revealingId={revealingId} />
-            ))}
+          {[state.matches.filter((m) => m.round === 1).slice(0, 2), state.matches.filter((m) => m.round === 1).slice(2)].map(
+            (half, i) => (
+              <div key={i} className="mt-7 flex gap-7 2xl:mt-9 2xl:gap-10">
+                {half.map((m) => (
+                  <PairColumn key={m.id} state={state} match={m} revealingId={revealingId} />
+                ))}
+              </div>
+            ),
+          )}
         </div>
       </div>
 
