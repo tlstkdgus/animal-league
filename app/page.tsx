@@ -14,7 +14,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { CARD_RADIUS, CharacterArt, SchoolTag, TRACK_COLORS, Wordmark } from '@/components/ui';
+import { cardRadiusWithBorder, CharacterArt, SchoolTag, TRACK_COLORS, Wordmark } from '@/components/ui';
 import { armSfx, playChips, playFan, playFlip, playImpact, playShuffle, playVersus } from '@/lib/sfx';
 import universityLogos from '@/lib/universityLogos';
 import { winningTeamId, type Match, type Team } from '@/lib/tournament';
@@ -504,32 +504,31 @@ function RevealSequence({ state, match }: { state: PublicState; match: Match }) 
                 onAnimationEnd={(e) => e.animationName === 'chipFlip' && setOpened((n) => Math.max(n, i + 1))}
                 style={{ animationDelay: `${(i * CHIP_INTERVAL_MS) / 1000}s` }}
               >
-                {/* 앞면 — 팀 캐릭터 카드. 테두리와 카드는 액자 구조로 분리 (8/22):
-                    테두리 div 에 CARD_RADIUS 를 그대로 쓰면 border 두께만큼 안쪽에서
-                    에셋의 베이크 곡률과 어긋나 모서리가 부딪혀 보인다 — 3px 갭을 두고
-                    바깥(고정 10px)과 카드(베이크 곡률)가 각자 곡률을 갖게 한다 */}
+                {/* 앞면 — 팀 캐릭터 카드. 테두리가 카드 곡률에 밀착하도록 바깥 radius 를
+                    (카드 곡률 + 테두리 두께)로 준다 — 안쪽 클리핑 곡선이 정확히 베이크
+                    곡률이 된다 (ui.tsx cardRadiusWithBorder, 8/22) */}
                 <div
-                  className="chip-face absolute inset-0 rounded-[10px] border-2 bg-white/5 p-0.75"
+                  className="chip-face absolute inset-0 overflow-hidden border-2 bg-white/5"
                   style={{
+                    borderRadius: cardRadiusWithBorder(2),
                     borderColor: SIDE_COLORS[side],
                     boxShadow: `0 0 18px color-mix(in srgb, ${SIDE_COLORS[side]} 35%, transparent)`,
                   }}
                 >
-                  <div className="relative h-full w-full overflow-hidden" style={{ borderRadius: CARD_RADIUS }}>
-                    {chipCharacter(side) ? (
-                      <Image src={`/characters/${chipCharacter(side)}.png`} alt="" fill sizes="96px" className="object-cover" />
-                    ) : (
-                      <span className="grid h-full w-full place-items-center text-xl font-extrabold" style={{ color: SIDE_COLORS[side] }}>
-                        {side}
-                      </span>
-                    )}
-                  </div>
+                  {chipCharacter(side) ? (
+                    <Image src={`/characters/${chipCharacter(side)}.png`} alt="" fill sizes="96px" className="object-cover" />
+                  ) : (
+                    <span className="grid h-full w-full place-items-center text-xl font-extrabold" style={{ color: SIDE_COLORS[side] }}>
+                      {side}
+                    </span>
+                  )}
                 </div>
-                {/* 뒷면 — 물음표 카드 (디자이너 에셋), 같은 액자 구조 */}
-                <div className="chip-face chip-back absolute inset-0 rounded-[10px] border border-white/15 bg-white/5 p-0.75">
-                  <div className="relative h-full w-full overflow-hidden" style={{ borderRadius: CARD_RADIUS }}>
-                    <Image src="/card-back-Q-ver2.png" alt="" fill sizes="96px" className="object-cover" />
-                  </div>
+                {/* 뒷면 — 물음표 카드 (디자이너 에셋), 같은 밀착 곡률 */}
+                <div
+                  className="chip-face chip-back absolute inset-0 overflow-hidden border border-white/15 bg-white/5"
+                  style={{ borderRadius: cardRadiusWithBorder(1) }}
+                >
+                  <Image src="/card-back-Q-ver2.png" alt="" fill sizes="96px" className="object-cover" />
                 </div>
               </div>
             </div>
@@ -563,21 +562,20 @@ function DrawCard({ state, index, order }: { state: PublicState; index: number |
         onAnimationStart={(e) => e.animationName === 'chipFlip' && playFlip()}
         style={{ animationDelay: `${DRAW_FLIP_BASE_S + order * 0.5}s` }}
       >
-        {/* 공개 칩과 같은 액자 구조 (8/22) — 테두리·카드 곡률 분리 */}
+        {/* 공개 칩과 같은 밀착 곡률 (8/22) — 바깥 radius = 카드 곡률 + 테두리 */}
         <div
-          className="chip-face absolute inset-0 rounded-xl border border-(--orange)/40 bg-white/5 p-0.75"
-          style={{ boxShadow: '0 0 24px rgba(236,108,1,0.25)' }}
+          className="chip-face absolute inset-0 overflow-hidden border border-(--orange)/40 bg-white/5"
+          style={{ borderRadius: cardRadiusWithBorder(1), boxShadow: '0 0 24px rgba(236,108,1,0.25)' }}
         >
-          <div className="relative h-full w-full overflow-hidden" style={{ borderRadius: CARD_RADIUS }}>
-            {team?.character ? (
-              <Image src={`/characters/${team.character}.png`} alt="" fill sizes="176px" className="object-cover" />
-            ) : null}
-          </div>
+          {team?.character ? (
+            <Image src={`/characters/${team.character}.png`} alt="" fill sizes="176px" className="object-cover" />
+          ) : null}
         </div>
-        <div className="chip-face chip-back absolute inset-0 rounded-xl border border-white/15 bg-white/5 p-0.75">
-          <div className="relative h-full w-full overflow-hidden" style={{ borderRadius: CARD_RADIUS }}>
-            <Image src="/card-back-0624.png" alt="" fill sizes="176px" className="object-cover" />
-          </div>
+        <div
+          className="chip-face chip-back absolute inset-0 overflow-hidden border border-white/15"
+          style={{ borderRadius: cardRadiusWithBorder(1) }}
+        >
+          <Image src="/card-back-0624.png" alt="" fill sizes="176px" className="object-cover" />
         </div>
       </div>
       {/* 팀명은 카드가 뒤집힌 뒤에 떠오른다 */}
