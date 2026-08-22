@@ -15,6 +15,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { CARD_RADIUS, CharacterArt, SchoolTag, TRACK_COLORS, Wordmark } from '@/components/ui';
+import { armSfx, playFlip, playShuffle } from '@/lib/sfx';
 import universityLogos from '@/lib/universityLogos';
 import { winningTeamId, type Match, type Team } from '@/lib/tournament';
 
@@ -472,6 +473,9 @@ function RevealSequence({ state, match }: { state: PublicState; match: Match }) 
             >
               <div
                 className="chip-inner relative h-full w-full"
+                // 플립 시작 = 효과음, 플립 종료 = 집계 오픈. 같은 애니메이션의 양 끝 이벤트라
+                // 소리와 화면이 어긋날 수 없다 (단일 시계 원칙의 연장, PR #24 참조)
+                onAnimationStart={(e) => e.animationName === 'chipFlip' && playFlip()}
                 onAnimationEnd={(e) => e.animationName === 'chipFlip' && setOpened((n) => Math.max(n, i + 1))}
                 style={{ animationDelay: `${(i * CHIP_INTERVAL_MS) / 1000}s` }}
               >
@@ -524,7 +528,11 @@ function DrawCard({ state, index, order }: { state: PublicState; index: number |
       className="draw-outer relative aspect-2/3 w-28 lg:w-36"
       style={{ animation: `drawShuf${order} 2.2s cubic-bezier(0.35, 0, 0.25, 1) 0.2s both` }}
     >
-      <div className="chip-inner relative h-full w-full" style={{ animationDelay: `${DRAW_FLIP_BASE_S + order * 0.5}s` }}>
+      <div
+        className="chip-inner relative h-full w-full"
+        onAnimationStart={(e) => e.animationName === 'chipFlip' && playFlip()}
+        style={{ animationDelay: `${DRAW_FLIP_BASE_S + order * 0.5}s` }}
+      >
         <div
           className="chip-face absolute inset-0 overflow-hidden border border-(--orange)/40 bg-white/5"
           style={{ borderRadius: CARD_RADIUS, boxShadow: '0 0 24px rgba(236,108,1,0.25)' }}
@@ -558,6 +566,14 @@ function DrawCard({ state, index, order }: { state: PublicState; index: number |
  * 이미 만들었고, 화면의 섞임은 그 결과를 발표하는 연출일 뿐이다.
  */
 function DrawSequence({ state, semis }: { state: PublicState; semis: [Match, Match] }) {
+  // 셔플 소리 — 셔플 애니메이션(0.2s 딜레이, 2.2s)과 동기. 플립 소리는 카드 쪽
+  // animationstart 가 낸다. reduced-motion 은 셔플 모션 자체가 없으니 소리도 생략.
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const timer = setTimeout(() => playShuffle(), 200);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-12 py-6">
       <p className="champion-rise text-2xl font-extrabold tracking-tight lg:text-4xl">2라운드 대진을 추첨합니다</p>
@@ -881,6 +897,10 @@ export default function ViewerPage() {
       clearInterval(timer);
     };
   }, [poll]);
+
+  // 효과음 준비 — 자동재생 정책상 첫 클릭/키 입력 후부터 소리가 난다 (lib/sfx.ts).
+  // 무대 운영: 프로젝터 창에서 F(전체화면)를 누르는 것만으로도 언락된다.
+  useEffect(() => armSfx(), []);
 
   if (state === null) {
     return (
