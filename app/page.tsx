@@ -502,6 +502,17 @@ function FreezeReveal({ state, match }: { state: PublicState; match: Match }) {
             플립 시작 = 효과음, 플립 종료 = 집계·이름 오픈 (단일 시계 원칙) */}
         {votes.map((side, i) => (
           <div key={i} className="flex flex-col items-center gap-3">
+            {/* 심사위원 명의 — 카드 위 (8/23 운영자 지시), 플립이 끝난 뒤에만
+                (뒷면 상태에서 이름이 먼저 보이면 다음 표를 예고하는 꼴).
+                이름 없는 표(도입 전 데이터)는 자리만 유지 */}
+            <span
+              className={`max-w-40 truncate text-center text-xl font-extrabold transition-opacity duration-500 lg:max-w-56 lg:text-2xl 2xl:max-w-84 2xl:text-3xl ${
+                i < opened && names[i] ? 'opacity-100' : 'opacity-0'
+              }`}
+              style={{ color: SIDE_COLORS[side] }}
+            >
+              {names[i] ?? ' '}
+            </span>
             <div
               className="chip-outer relative aspect-2/3 w-40 lg:w-56 2xl:w-84"
               style={{ animationDelay: `${i * 0.06}s` }}
@@ -538,16 +549,6 @@ function FreezeReveal({ state, match }: { state: PublicState; match: Match }) {
                 </div>
               </div>
             </div>
-            {/* 심사위원 명의 — 카드가 뒤집힌 뒤에만 (뒷면 상태에서 이름이 먼저 보이면
-                다음 표를 예고하는 꼴). 이름 없는 표(도입 전 데이터)는 자리만 유지 */}
-            <span
-              className={`max-w-40 truncate text-center text-xl font-extrabold transition-opacity duration-500 lg:max-w-56 lg:text-2xl 2xl:max-w-84 2xl:text-3xl ${
-                i < opened && names[i] ? 'opacity-100' : 'opacity-0'
-              }`}
-              style={{ color: SIDE_COLORS[side] }}
-            >
-              {names[i] ?? ' '}
-            </span>
           </div>
         ))}
       </div>
