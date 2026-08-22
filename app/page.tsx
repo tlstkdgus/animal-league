@@ -14,7 +14,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { cardRadiusWithBorder, CharacterArt, SchoolTag, TRACK_COLORS, Wordmark } from '@/components/ui';
+import { CharacterArt, SchoolTag, TRACK_COLORS, Wordmark } from '@/components/ui';
 import { armSfx, playChips, playFan, playFanfare, playFlip, playImpact, playShuffle, playVersus } from '@/lib/sfx';
 import universityLogos from '@/lib/universityLogos';
 import { isAnnounced, winningTeamId, type Match, type Team } from '@/lib/tournament';
@@ -224,6 +224,7 @@ function PairColumn({
   showDest = false,
   slotBg,
   championSlot = false,
+  pairHidden = false,
 }: {
   state: PublicState;
   match: Match;
@@ -235,6 +236,8 @@ function PairColumn({
   slotBg?: string;
   /** 결선 전용 (8/22 저녁): CHAMPION 슬롯 강조 스타일 */
   championSlot?: boolean;
+  /** 추첨 전 결선 열 (8/22 심야): 대기 카드 쌍을 감춘다 — 집결 박스 하나만 남긴다 */
+  pairHidden?: boolean;
 }) {
   const live = match.status === 'live';
   const done = match.status === 'done';
@@ -272,25 +275,29 @@ function PairColumn({
           <span>{slotLabel}</span>
         )}
       </div>
-      <div
-        className="h-4"
-        style={{ borderLeft: `2px ${done ? 'solid rgba(236,108,1,0.55)' : 'dashed rgba(255,255,255,0.16)'}` }}
-        aria-hidden
-      />
-      {/* 쌍을 감싸던 테두리 박스 제거 (2026-08-22 피드백) — 개별 카드가 자체
-          테두리·승자 하이라이트를 갖고 있어 박스 없이도 대진이 읽힌다.
-          live 강조는 대결 포커스 화면이 대신하므로 (live 면 브래킷 자체가 안 보임)
-          박스의 live 테두리도 함께 정리 — LIVE 배지만 남긴다 */}
-      <div className="relative flex items-center gap-2.5 2xl:gap-4">
-        {live && (
-          <span className="live-pulse absolute -top-2.5 left-1/2 -translate-x-1/2 rounded bg-(--live) px-1.5 py-0.5 text-[10px] font-extrabold text-white">
-            LIVE
-          </span>
-        )}
-        <TeamSolo state={state} index={match.a} match={match} side="A" />
-        <span className="text-[10px] font-extrabold text-white/25 2xl:text-xs">VS</span>
-        <TeamSolo state={state} index={match.b} match={match} side="B" />
-      </div>
+      {!pairHidden && (
+        <>
+          <div
+            className="h-4"
+            style={{ borderLeft: `2px ${done ? 'solid rgba(236,108,1,0.55)' : 'dashed rgba(255,255,255,0.16)'}` }}
+            aria-hidden
+          />
+          {/* 쌍을 감싸던 테두리 박스 제거 (2026-08-22 피드백) — 개별 카드가 자체
+              테두리·승자 하이라이트를 갖고 있어 박스 없이도 대진이 읽힌다.
+              live 강조는 대결 포커스 화면이 대신하므로 (live 면 브래킷 자체가 안 보임)
+              박스의 live 테두리도 함께 정리 — LIVE 배지만 남긴다 */}
+          <div className="relative flex items-center gap-2.5 2xl:gap-4">
+            {live && (
+              <span className="live-pulse absolute -top-2.5 left-1/2 -translate-x-1/2 rounded bg-(--live) px-1.5 py-0.5 text-[10px] font-extrabold text-white">
+                LIVE
+              </span>
+            )}
+            <TeamSolo state={state} index={match.a} match={match} side="A" />
+            <span className="text-[10px] font-extrabold text-white/25 2xl:text-xs">VS</span>
+            <TeamSolo state={state} index={match.b} match={match} side="B" />
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -505,27 +512,28 @@ function FreezeReveal({ state, match }: { state: PublicState; match: Match }) {
                 onAnimationEnd={(e) => e.animationName === 'chipFlip' && setOpened((n) => Math.max(n, i + 1))}
                 style={{ animationDelay: `${(i * CHIP_INTERVAL_MS) / 1000}s` }}
               >
-                {/* 테두리는 카드 곡률에 밀착 — 바깥 radius = 곡률 + 테두리 (ui.tsx) */}
+                {/* 테두리·클리핑 래퍼 제거 (8/22 심야) — 에셋에 구운 곡률과 CSS
+                    곡률이 근본적으로 안 맞아서(앞면 5.6~5.8%, 뒷면 6.1% 실측)
+                    에셋을 원형 그대로 쓴다. 진영색은 카드 알파 모양을 따라가는
+                    drop-shadow 글로우가 담당 — 안쪽 얇은 겹 + 바깥 퍼짐 두 겹 */}
                 <div
-                  className="chip-face absolute inset-0 overflow-hidden border-2 bg-white/5"
+                  className="chip-face absolute inset-0"
                   style={{
-                    borderRadius: cardRadiusWithBorder(2),
-                    borderColor: SIDE_COLORS[side],
-                    boxShadow: `0 0 34px color-mix(in srgb, ${SIDE_COLORS[side]} 45%, transparent)`,
+                    filter: `drop-shadow(0 0 3px ${SIDE_COLORS[side]}) drop-shadow(0 0 28px color-mix(in srgb, ${SIDE_COLORS[side]} 55%, transparent))`,
                   }}
                 >
                   {chipCharacter(side) ? (
                     <Image src={`/characters/${chipCharacter(side)}.png`} alt="" fill sizes="336px" className="object-cover" />
                   ) : (
-                    <span className="grid h-full w-full place-items-center text-3xl font-extrabold" style={{ color: SIDE_COLORS[side] }}>
+                    <span
+                      className="grid h-full w-full place-items-center rounded-xl border-2 text-3xl font-extrabold"
+                      style={{ color: SIDE_COLORS[side], borderColor: SIDE_COLORS[side] }}
+                    >
                       {side}
                     </span>
                   )}
                 </div>
-                <div
-                  className="chip-face chip-back absolute inset-0 overflow-hidden border border-white/15 bg-white/5"
-                  style={{ borderRadius: cardRadiusWithBorder(1) }}
-                >
+                <div className="chip-face chip-back absolute inset-0">
                   <Image src="/card-back-Q-ver2.png" alt="" fill sizes="336px" className="object-cover" />
                 </div>
               </div>
@@ -624,20 +632,18 @@ function DrawCard({ state, index, order }: { state: PublicState; index: number |
             chipFlip 0.6s cubic-bezier(0.3, 0.8, 0.3, 1) ${DRAW_FLIP_BASE_S + order * 0.5}s forwards`,
         }}
       >
-        {/* 공개 칩과 같은 밀착 곡률 (8/22) — 바깥 radius = 카드 곡률 + 테두리 */}
+        {/* 테두리·클리핑 래퍼 제거 (8/22 심야, 공개 칩과 같은 이유) —
+            에셋 원형 그대로 + 오렌지 drop-shadow 글로우 */}
         <div
-          className="chip-face absolute inset-0 overflow-hidden border border-(--orange)/40 bg-white/5"
-          style={{ borderRadius: cardRadiusWithBorder(1), boxShadow: '0 0 24px rgba(236,108,1,0.25)' }}
+          className="chip-face absolute inset-0"
+          style={{ filter: 'drop-shadow(0 0 20px rgba(236,108,1,0.3))' }}
         >
           {team?.character ? (
-            <Image src={`/characters/${team.character}.png`} alt="" fill sizes="176px" className="object-cover" />
+            <Image src={`/characters/${team.character}.png`} alt="" fill sizes="192px" className="object-cover" />
           ) : null}
         </div>
-        <div
-          className="chip-face chip-back absolute inset-0 overflow-hidden border border-white/15"
-          style={{ borderRadius: cardRadiusWithBorder(1) }}
-        >
-          <Image src="/card-back-0624.png" alt="" fill sizes="176px" className="object-cover" />
+        <div className="chip-face chip-back absolute inset-0">
+          <Image src="/card-back-0624.png" alt="" fill sizes="192px" className="object-cover" />
         </div>
       </div>
       {/* 도입 팀명 — 모으기 전 앞면 카드 밑 (누가 진출 4팀인지 보여주는 단계).
@@ -1457,12 +1463,14 @@ export default function ViewerPage() {
         {/* 연결선 + 3개 라운드를 절반 셀 그리드로 — 연결선 끝점 = 준결승 열 중심 =
             하위 두 열 중점이 수치 없이 자동 성립 (8/22 정렬 결정 유지) */}
         <div className="relative mx-auto grid w-fit grid-cols-2 gap-x-7 2xl:gap-x-10">
-          {/* 결선 열 — 두 셀에 걸쳐 중앙. CHAMPION 슬롯은 전용 강조 스타일 (8/22 저녁) */}
+          {/* 결선 열 — 두 셀에 걸쳐 중앙. CHAMPION 슬롯은 전용 강조 스타일 (8/22 저녁).
+              추첨 전에는 대기 카드 쌍을 감춘다 (8/22 심야 — "집결 박스 하나만") */}
           <div className="col-span-2 flex justify-center">
             <PairColumn
               state={state}
               match={final}
               championSlot
+              pairHidden={!semisDrawn}
               slotLabel={
                 <span className="font-display champ-slot-text text-sm tracking-[0.28em] 2xl:text-base">
                   🏆 CHAMPION
