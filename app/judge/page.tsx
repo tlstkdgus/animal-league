@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CharacterArt, SchoolTag, Wordmark } from '@/components/ui';
-import { noteServerNow, serverNow } from '@/lib/clock';
+import { noteServerNow } from '@/lib/clock';
 import type { Match, Team, Side, TimerState } from '@/lib/tournament';
 
 // ------------------------------------------------------------
@@ -123,46 +123,8 @@ function EntryGate({ notice, onEnter }: { notice: string; onEnter: (identity: Id
   );
 }
 
-// ------------------------------------------------------------
-// 라운드 타이머 — 표시 전용 (§6.2 개정 8/19: 운영 구동 서버 동기)
-//
-// 경기 시작·단계 전환은 운영 콘솔이 하고, 심사위원은 아무것도 누르지 않는다.
-// 서버는 시작 시각만 내려주고 남은 시간은 이 기기 시계로 계산한다 —
-// 폴링 3초 지연이 있어도 남은 시간 자체는 어긋나지 않는다.
-// ------------------------------------------------------------
-
-function TimerDisplay({ timer }: { timer: TimerState }) {
-  // serverNow: startedAt 이 서버 시각이라, 기기 시계 편차를 보정한 시계로 계산해야
-  // 콘솔·심사 화면이 같은 숫자를 보인다 (lib/clock.ts, 8/22)
-  const [nowMs, setNowMs] = useState(() => serverNow());
-
-  useEffect(() => {
-    const tick = setInterval(() => setNowMs(serverNow()), 500);
-    return () => clearInterval(tick);
-  }, []);
-
-  const remaining = Math.max(0, timer.seconds - Math.floor((nowMs - timer.startedAt) / 1000));
-  const mm = String(Math.floor(remaining / 60)).padStart(2, '0');
-  const ss = String(remaining % 60).padStart(2, '0');
-  const warning = remaining <= 30 && remaining > 0;
-  const finished = remaining === 0;
-
-  return (
-    <div className="rounded-2xl border border-white/10 bg-(--surface) p-4 md:mx-auto md:w-full md:max-w-2xl md:p-5">
-      <div className="flex items-center justify-between">
-        <span className="rounded-lg bg-(--orange) px-3 py-1.5 text-sm font-bold text-white md:text-base">
-          {timer.label}
-        </span>
-        <span
-          className={`font-mono text-4xl font-extrabold tabular-nums md:text-5xl ${finished ? 'animate-pulse' : ''}`}
-          style={{ color: warning || finished ? 'var(--live)' : undefined }}
-        >
-          {mm}:{ss}
-        </span>
-      </div>
-    </div>
-  );
-}
+/* 라운드 타이머 표시 제거 (8/23 운영자 결정) — 타이머는 행사장 별도 화면이 송출.
+   서버 타이머 상태는 그대로 내려오지만 심사 화면은 소비하지 않는다 (백업 복원 용이). */
 
 // ------------------------------------------------------------
 // 심사 폼 — live 경기 (live.id 로 key 되어 경기가 바뀌면 전부 초기화)
@@ -171,14 +133,12 @@ function TimerDisplay({ timer }: { timer: TimerState }) {
 function JudgeForm({
   match,
   teams,
-  timer,
   identity,
   roster,
   onAuthLost,
 }: {
   match: Match;
   teams: Team[];
-  timer: TimerState | null;
   identity: Identity;
   roster: string[];
   onAuthLost: (notice: string) => void;
@@ -287,8 +247,6 @@ function JudgeForm({
           {match.round === 3 ? '결선' : `라운드 ${match.round}`}
         </span>
       </div>
-
-      {timer && timer.matchId === match.id && <TimerDisplay timer={timer} />}
 
       <p className="text-center text-sm font-bold text-white/70 md:text-base">진출할 팀을 선택하세요</p>
       <div className="space-y-3 md:grid md:grid-cols-[1fr_auto_1fr] md:items-stretch md:gap-5 md:space-y-0">
@@ -509,7 +467,6 @@ export default function JudgePage() {
           key={live.id} // 경기가 바뀌면 폼 전체 초기화 (§8)
           match={live}
           teams={state.teams}
-          timer={state.timer}
           identity={identity}
           roster={roster}
           onAuthLost={authLost}
