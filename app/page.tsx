@@ -221,47 +221,35 @@ function PairColumn({
   state,
   match,
   slotLabel,
-  showDest = false,
   slotBg,
   championSlot = false,
   pairHidden = false,
-  slotHidden = false,
 }: {
   state: PublicState;
   match: Match;
   /** done 전 승자 슬롯 라벨 — R1 은 트랙명(8/22 운영자), R2/F 는 진출처 */
   slotLabel: ReactNode;
-  /** R1 전용: done 후 "→ R2-N 진출" 배지 */
-  showDest?: boolean;
   /** R1 전용 (8/22 저녁): 슬롯 배경을 트랙 컬러로 — 글자색 표기를 대체 */
   slotBg?: string;
   /** 결선 전용 (8/22 저녁): CHAMPION 슬롯 강조 스타일 */
   championSlot?: boolean;
   /** 추첨 전 결선 열 (8/22 심야): 대기 카드 쌍을 감춘다 — 집결 박스 하나만 남긴다 */
   pairHidden?: boolean;
-  /** R1 전용 (8/23): 4팀이 다 결정되면 슬롯 자체를 없앤다 — 역할이 끝난 칩 */
-  slotHidden?: boolean;
 }) {
   const live = match.status === 'live';
   const done = match.status === 'done';
   const winnerIdx = winningTeamId(match);
-  const dest =
-    showDest && done && winnerIdx !== null
-      ? state.matches.find((m) => m.round === 2 && (m.a === winnerIdx || m.b === winnerIdx))
-      : undefined;
 
   return (
     <div className="flex flex-col items-center">
-      {/* 트랙 슬롯(slotBg, R1)은 done 이후에도 그대로 (8/23 운영자 — "이겨도 트랙
-          표기 유지"): 승자는 카드 하이라이트·중앙 집결 박스가 이미 말해준다.
-          R1 4경기가 전부 끝나면 슬롯 자체가 사라진다 (slotHidden — "4팀 결정되면
-          없애버려"). 승자명·→진출 배지는 R2/F 슬롯에만 남는다 */}
-      {!slotHidden && (
+      {/* 슬롯 = 경기 전 예고(트랙 칩) → 종료 후 결과(승자명) (8/23 확정 — 트랙 유지·
+          슬롯 제거를 하루 동안 시도한 끝의 원복: 트랙명은 경기 전에만 정보 가치가
+          있고, 끝난 뒤 그 자리의 정보는 승자다) */}
       <div
         className={`rounded-lg py-1.5 text-center text-xs font-bold 2xl:text-sm ${
           championSlot && !done ? 'champ-slot w-52 py-2 2xl:w-64' : 'w-44 2xl:w-56'
         } ${
-          done && !slotBg
+          done
             ? 'border border-(--orange)/45'
             : championSlot
               ? ''
@@ -269,32 +257,22 @@ function PairColumn({
                 ? 'border border-white/10'
                 : 'border border-dashed border-white/20'
         }`}
-        style={{
-          background: slotBg ?? (done ? 'var(--orange-glow)' : championSlot ? undefined : 'rgba(255,255,255,0.03)'),
-        }}
+        style={{ background: done ? 'var(--orange-glow)' : championSlot ? undefined : (slotBg ?? 'rgba(255,255,255,0.03)') }}
       >
-        {done && !slotBg ? (
-          <>
-            {/* 발표 순간 슬롯 채움 라이즈 — 결과 화면 → 대진표 복귀 시 승자가 올라온 느낌 */}
-            <span className="champion-rise line-clamp-1 px-2">{teamName(state, winnerIdx)}</span>
-            {dest && (
-              <span className="font-en block text-[10px] font-bold text-(--orange)">→ {dest.id} 진출</span>
-            )}
-          </>
+        {done ? (
+          /* 발표 순간 슬롯 채움 라이즈 — 팀명만, "→ R2-N 진출" 배지 없음 (8/23 확정) */
+          <span className="champion-rise line-clamp-1 px-2">{teamName(state, winnerIdx)}</span>
         ) : (
           <span>{slotLabel}</span>
         )}
       </div>
-      )}
       {!pairHidden && (
         <>
-          {!slotHidden && (
-            <div
-              className="h-4"
-              style={{ borderLeft: `2px ${done ? 'solid rgba(236,108,1,0.55)' : 'dashed rgba(255,255,255,0.16)'}` }}
-              aria-hidden
-            />
-          )}
+          <div
+            className="h-4"
+            style={{ borderLeft: `2px ${done ? 'solid rgba(236,108,1,0.55)' : 'dashed rgba(255,255,255,0.16)'}` }}
+            aria-hidden
+          />
           {/* 쌍을 감싸던 테두리 박스 제거 (2026-08-22 피드백) — 개별 카드가 자체
               테두리·승자 하이라이트를 갖고 있어 박스 없이도 대진이 읽힌다.
               live 강조는 대결 포커스 화면이 대신하므로 (live 면 브래킷 자체가 안 보임)
@@ -1546,8 +1524,6 @@ export default function ViewerPage() {
                     key={m.id}
                     state={state}
                     match={m}
-                    showDest
-                    slotHidden={r1Matches.every((r) => r.status === 'done')}
                     slotBg={track ? TRACK_COLORS[track] : undefined}
                     slotLabel={
                       track ? (
