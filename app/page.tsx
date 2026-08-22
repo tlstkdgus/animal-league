@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { cardRadiusWithBorder, CharacterArt, SchoolTag, TRACK_COLORS, Wordmark } from '@/components/ui';
-import { armSfx, playChips, playFan, playFlip, playImpact, playShuffle, playVersus } from '@/lib/sfx';
+import { armSfx, playChips, playFan, playFanfare, playFlip, playImpact, playShuffle, playVersus } from '@/lib/sfx';
 import universityLogos from '@/lib/universityLogos';
 import { winningTeamId, type Match, type Team } from '@/lib/tournament';
 
@@ -654,6 +654,14 @@ function ChampionTakeover({ state, final }: { state: PublicState; final: Match }
   const team = teamAt(state, index);
   const fxRef = useRef<HTMLCanvasElement | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
+
+  // 팡파레 — 큐시트의 "팡파레 BGM" 담당 (8/22). CHAMPION 레터 드롭(1.04초)에 맞춘다.
+  // 컨페티 이펙트와 분리한 이유: 아래 이펙트는 reduced-motion 이면 통째로 건너뛰는데,
+  // 팡파레는 모션이 아니라 발표라 그때도 나야 한다. 타이머+클린업 = StrictMode 방어
+  useEffect(() => {
+    const timer = setTimeout(() => playFanfare(), 1040);
+    return () => clearTimeout(timer);
+  }, []);
 
   // 컨페티 — 마운트 1회 재생. 내부 좌표는 높이 1080 고정(원본 튜닝값 유지),
   // 폭만 화면 비율을 따른다. 발사 원점은 카드 DOM 실측 — 레이아웃이 달라도 정중앙.

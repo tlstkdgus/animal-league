@@ -4,6 +4,16 @@ card-fan-1.ogg, chips-collide-1.ogg ~ chips-collide-2.ogg
 출처: Casino Audio (v1.1) by Kenney Vleugels (kenney.nl)
 라이선스: Creative Commons Zero (CC0)
 http://creativecommons.org/publicdomain/zero/1.0/
-
 원본 팩: https://kenney.nl/assets/casino-audio
 (다운로드 미러: https://opengameart.org/content/54-casino-sound-effects-cards-dice-chips)
+
+hit-orchestra.ogg (원본 파일명 jingles_HIT15.ogg)
+
+출처: Short jingles by Kenney Vleugels (kenney.nl)
+라이선스: CC0
+다운로드: https://opengameart.org/content/85-short-music-jingles
+
+fanfare.mp3 (원본 파일명 sboe.mp3)
+
+출처: "Hyper Ultra Fanfare" — https://opengameart.org/content/hyper-ultra-fanfare
+라이선스: CC0
