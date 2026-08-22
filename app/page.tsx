@@ -1442,11 +1442,14 @@ export default function ViewerPage() {
             하위 두 열 중점이 수치 없이 자동 성립 (8/22 정렬 결정 유지) */}
         <div className="relative mx-auto grid w-fit grid-cols-2 gap-x-7 2xl:gap-x-10">
           {/* 결선 열 — 두 셀에 걸쳐 중앙. CHAMPION 슬롯은 전용 강조 스타일 (8/22 저녁).
-              추첨 전에는 대기 카드 쌍을 감춘다 (8/22 심야 — "집결 박스 하나만") */}
+              추첨 전에는 대기 카드 쌍을 감춘다 (8/22 심야 — "집결 박스 하나만").
+              대기 카드는 R2 승자가 나오는 즉시 표시로 선반영 (8/23 — R1 집결과 같은
+              문법. 좌=R2-1·우=R2-2 승자, setFinal 의 a/b 매핑과 동일해 [결선 확정]
+              때 자리 점프가 없다. 확정·경기 시작 가드는 여전히 setFinal 몫) */}
           <div className="col-span-2 flex justify-center">
             <PairColumn
               state={state}
-              match={final}
+              match={{ ...final, a: final.a ?? winningTeamId(semi1), b: final.b ?? winningTeamId(semi2) }}
               championSlot
               pairHidden={!semisDrawn}
               slotLabel={
