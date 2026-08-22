@@ -502,6 +502,17 @@ function FreezeReveal({ state, match }: { state: PublicState; match: Match }) {
             플립 시작 = 효과음, 플립 종료 = 집계·이름 오픈 (단일 시계 원칙) */}
         {votes.map((side, i) => (
           <div key={i} className="flex flex-col items-center gap-3">
+            {/* 심사위원 명의 — 카드 위 (8/23 운영자 지시), 플립이 끝난 뒤에만
+                (뒷면 상태에서 이름이 먼저 보이면 다음 표를 예고하는 꼴).
+                이름 없는 표(도입 전 데이터)는 자리만 유지 */}
+            <span
+              className={`max-w-40 truncate text-center text-xl font-extrabold transition-opacity duration-500 lg:max-w-56 lg:text-2xl 2xl:max-w-84 2xl:text-3xl ${
+                i < opened && names[i] ? 'opacity-100' : 'opacity-0'
+              }`}
+              style={{ color: SIDE_COLORS[side] }}
+            >
+              {names[i] ?? ' '}
+            </span>
             <div
               className="chip-outer relative aspect-2/3 w-40 lg:w-56 2xl:w-84"
               style={{ animationDelay: `${i * 0.06}s` }}
@@ -538,16 +549,6 @@ function FreezeReveal({ state, match }: { state: PublicState; match: Match }) {
                 </div>
               </div>
             </div>
-            {/* 심사위원 명의 — 카드가 뒤집힌 뒤에만 (뒷면 상태에서 이름이 먼저 보이면
-                다음 표를 예고하는 꼴). 이름 없는 표(도입 전 데이터)는 자리만 유지 */}
-            <span
-              className={`max-w-40 truncate text-center text-xl font-extrabold transition-opacity duration-500 lg:max-w-56 lg:text-2xl 2xl:max-w-84 2xl:text-3xl ${
-                i < opened && names[i] ? 'opacity-100' : 'opacity-0'
-              }`}
-              style={{ color: SIDE_COLORS[side] }}
-            >
-              {names[i] ?? ' '}
-            </span>
           </div>
         ))}
       </div>
@@ -646,18 +647,8 @@ function DrawCard({ state, index, order }: { state: PublicState; index: number |
           <Image src="/card-back-0624.png" alt="" fill sizes="192px" className="object-cover" />
         </div>
       </div>
-      {/* 도입 팀명 — 모으기 전 앞면 카드 밑 (누가 진출 4팀인지 보여주는 단계).
-          모으기 시작과 함께 사라진다. reduced-motion 은 완성 상태만 보이므로 숨김 */}
-      <p className="draw-gname absolute -bottom-8 left-1/2 w-40 -translate-x-1/2 text-center text-sm font-extrabold lg:text-base 2xl:text-lg">
-        {teamName(state, index)}
-      </p>
-      {/* 확정 팀명 — 공개 플립 뒤에 떠오른다 */}
-      <p
-        className="draw-name absolute -bottom-8 left-1/2 w-40 -translate-x-1/2 text-center text-sm font-extrabold lg:text-base 2xl:text-lg"
-        style={{ animationDelay: `${DRAW_FLIP_BASE_S + order * 0.5 + 0.45}s` }}
-      >
-        {teamName(state, index)}
-      </p>
+      {/* 팀명 라벨 없음 (8/23 운영자: "팀명 다 빼") — 카드 아트가 곧 팀 식별이고,
+          확정 대진은 복귀한 대진표의 승자 슬롯이 알려준다 */}
     </div>
   );
 }
@@ -708,16 +699,17 @@ function DrawSequence({ state, semis }: { state: PublicState; semis: [Match, Mat
       <div ref={bedRef} className="flex items-start justify-center gap-14 lg:gap-24">
         {semis.map((semi, s) => (
           <div key={semi.id} className="flex flex-col items-center gap-5">
+            {/* 대진 라벨·VS 는 원거리 가독 크기로 (8/23 운영자: "너무 작아 안 보여") */}
             <span
-              className="draw-name font-en text-sm font-bold text-(--orange)"
+              className="draw-name font-display text-3xl tracking-wider text-(--orange) lg:text-4xl 2xl:text-5xl"
               style={{ animationDelay: `${DRAW_FLIP_BASE_S + 2 + s * 0.2}s` }}
             >
               {semi.id}
             </span>
-            <div className="flex items-center gap-5 lg:gap-7">
+            <div className="flex items-center gap-5 lg:gap-7 2xl:gap-9">
               <DrawCard state={state} index={semi.a} order={s * 2} />
               <span
-                className="draw-name text-xs font-extrabold text-white/30"
+                className="draw-name font-display text-2xl text-white/50 lg:text-3xl 2xl:text-4xl"
                 style={{ animationDelay: `${DRAW_FLIP_BASE_S + 2 + s * 0.2}s` }}
               >
                 VS
@@ -1376,9 +1368,6 @@ export default function ViewerPage() {
         }
         /* 모으기 뒤 전체가 뒷면으로 — 공개(chipFlip: 180→0)의 역방향 */
         @keyframes drawToBack { from { transform: rotateY(0deg); } to { transform: rotateY(180deg); } }
-        /* 도입 팀명 — 앞면 단계(0~1s)에만, 모으기 시작과 함께 사라진다 */
-        .draw-gname { animation: rise 0.4s ease-out 0.15s both, drawNameOut 0.35s ease-in 0.95s forwards; }
-        @keyframes drawNameOut { to { opacity: 0; } }
         .draw-name { animation: rise 0.5s ease-out both; }
         /* 대진표 배경 + CHAMPION 슬롯 (8/22 저녁 — "배경 추가", "CHAMPION 디자인") */
         .bracket-backdrop { pointer-events: none; animation: backdropIn 0.9s ease-out both; }
@@ -1414,8 +1403,6 @@ export default function ViewerPage() {
           .live-pulse, .card-reveal, .champion-rise,
           .chip-outer, .chip-inner, .draw-outer, .draw-name,
           .vs-backdrop, .vs-glow, .vs-beam { animation: none !important; }
-          /* 도입 팀명은 확정 팀명과 같은 자리라 모션 없이 두면 겹쳐 보인다 — 숨김 */
-          .draw-gname { display: none !important; }
           /* 우승 무대 — 원본의 축소 규칙 그대로: 흔들림·플래시·충격파·포일·그레인만 끄고,
              페이드 계열(블룸·빔·레터 드롭·와이프)은 유지. 카드는 페이드 등장으로 대체 */
           .champ-shake, .champ-wave, .champ-flash, .champ-scan, .champ-foil, .champ-grain { animation: none !important; }
@@ -1525,8 +1512,9 @@ export default function ViewerPage() {
                       </div>
                     ) : (
                       <div key={m.id} className="w-24 text-center 2xl:w-28">
-                        <div className="grid aspect-2/3 w-full place-items-center rounded-lg border border-dashed border-white/15 bg-white/2 text-xl font-extrabold text-white/20">
-                          ?
+                        {/* 빈 슬롯 = 물음표 카드 에셋 (8/23 운영자 — 회색 ? 박스 대신) */}
+                        <div className="relative aspect-2/3 w-full opacity-70">
+                          <Image src="/card-back-Q-ver2.png" alt="" fill sizes="112px" className="object-cover" />
                         </div>
                         <p className="font-en mt-1.5 text-xs font-bold text-white/30 2xl:text-sm">{m.id} 승자</p>
                       </div>
