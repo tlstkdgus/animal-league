@@ -18,7 +18,19 @@ export async function GET(): Promise<Response> {
 
     const { teams, matches, judges, judgeCode } = row.data;
     return ok({
-      state: { teams, matches, judges, judgeCode, rev: row.rev, trackWarnings: trackWarnings(row.data) },
+      state: {
+        teams,
+        matches,
+        judges,
+        judgeCode,
+        // timer 누락이 "콘솔 타이머가 폴링마다 --:-- 로 리셋"되는 버그였다 (8/22).
+        // 액션 응답(adminView)에는 있었는데 폴링 스냅샷에만 빠져 있었음
+        timer: row.data.timer ?? null,
+        /** 서버 현재 시각 — 기기 시계 편차 보정용 (lib/clock.ts) */
+        now: Date.now(),
+        rev: row.rev,
+        trackWarnings: trackWarnings(row.data),
+      },
     });
   });
 }

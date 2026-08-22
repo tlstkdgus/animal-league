@@ -42,6 +42,8 @@ function adminView(row: StateRow) {
     judges,
     judgeCode,
     timer: row.data.timer ?? null,
+    /** 서버 현재 시각 — 기기 시계 편차 보정용 (lib/clock.ts) */
+    now: Date.now(),
     rev: row.rev,
     trackWarnings: trackWarnings(row.data),
   };

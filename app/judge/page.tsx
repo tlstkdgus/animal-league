@@ -9,6 +9,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CharacterArt, SchoolTag, Wordmark } from '@/components/ui';
+import { noteServerNow, serverNow } from '@/lib/clock';
 import type { Match, Team, Side, TimerState } from '@/lib/tournament';
 
 // ------------------------------------------------------------
@@ -131,10 +132,12 @@ function EntryGate({ notice, onEnter }: { notice: string; onEnter: (identity: Id
 // ------------------------------------------------------------
 
 function TimerDisplay({ timer }: { timer: TimerState }) {
-  const [nowMs, setNowMs] = useState(() => Date.now());
+  // serverNow: startedAt 이 서버 시각이라, 기기 시계 편차를 보정한 시계로 계산해야
+  // 콘솔·심사 화면이 같은 숫자를 보인다 (lib/clock.ts, 8/22)
+  const [nowMs, setNowMs] = useState(() => serverNow());
 
   useEffect(() => {
-    const tick = setInterval(() => setNowMs(Date.now()), 500);
+    const tick = setInterval(() => setNowMs(serverNow()), 500);
     return () => clearInterval(tick);
   }, []);
 
@@ -432,8 +435,12 @@ export default function JudgePage() {
   // 공개 상태 3초 폴링. 실패하면 마지막 정상 스냅샷 유지 (명세 §7)
   const poll = useCallback(async () => {
     try {
-      // no-store: SWR 캐시 헤더를 브라우저가 존중해 낡은 스냅샷을 받는 것 방지 (viewer 와 동일)
-      const res = await api<PublicState>('/api/state', { cache: 'no-store' });
+      // no-store: SWR 캐시 헤더를 브라우저가 존중해 낡은 스냅샷을 받는 것 방지 (viewer 와 동일).
+      // api 헬퍼 대신 fetch 인 이유: 시계 편차 보정에 Age 헤더가 필요하다 (CDN 캐시 응답의 now 는 낡음)
+      const raw = await fetch('/api/state', { cache: 'no-store' });
+      const res = (await raw.json()) as PublicState & { ok?: boolean; now?: number };
+      if (!res?.ok) return;
+      noteServerNow(res.now, raw.headers.get('age'));
       if (res.rev < revRef.current) return; // 낡은 스냅샷 무시 (§4.1)
       revRef.current = res.rev;
       setState({ teams: res.teams, matches: res.matches, timer: res.timer ?? null, rev: res.rev });

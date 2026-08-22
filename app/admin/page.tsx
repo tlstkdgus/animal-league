@@ -11,6 +11,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import universityLogos from '@/lib/universityLogos';
 import { characterKeyForSchool, characterName } from '@/lib/characterMap';
+import { noteServerNow, serverNow } from '@/lib/clock';
 import type { Match, Team, Track, Side, TimerState } from '@/lib/tournament';
 import { TRACKS, TIMER_PRESETS } from '@/lib/tournament';
 
@@ -48,6 +49,8 @@ type AdminState = {
   judges: string[];
   judgeCode: string;
   timer: TimerState | null;
+  /** 서버 현재 시각 — 기기 시계 편차 보정용 (lib/clock.ts). 구버전 응답엔 없다 */
+  now?: number;
   rev: number;
   trackWarnings: string[];
 };
@@ -489,9 +492,10 @@ function TimerControl({
   busy: boolean;
   onSetTimer: (label: string) => void;
 }) {
-  const [nowMs, setNowMs] = useState(() => Date.now());
+  // serverNow: 심사 화면과 같은 보정 시계 — 두 화면이 같은 숫자를 보여야 한다 (8/22)
+  const [nowMs, setNowMs] = useState(() => serverNow());
   useEffect(() => {
-    const tick = setInterval(() => setNowMs(Date.now()), 500);
+    const tick = setInterval(() => setNowMs(serverNow()), 500);
     return () => clearInterval(tick);
   }, []);
 
@@ -1076,6 +1080,7 @@ export default function AdminPage() {
   const revRef = useRef(0);
 
   const apply = useCallback((next: AdminState) => {
+    noteServerNow(next.now); // 시계 편차 갱신 — rev 가드보다 먼저 (낡은 스냅샷도 시각은 유효)
     if (next.rev < revRef.current) return; // 낡은 스냅샷 무시 (명세 §4.1)
     revRef.current = next.rev;
     setState(next);
