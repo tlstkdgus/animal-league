@@ -222,6 +222,8 @@ function PairColumn({
   match,
   slotLabel,
   showDest = false,
+  slotBg,
+  championSlot = false,
 }: {
   state: PublicState;
   match: Match;
@@ -229,6 +231,10 @@ function PairColumn({
   slotLabel: ReactNode;
   /** R1 전용: done 후 "→ R2-N 진출" 배지 */
   showDest?: boolean;
+  /** R1 전용 (8/22 저녁): 슬롯 배경을 트랙 컬러로 — 글자색 표기를 대체 */
+  slotBg?: string;
+  /** 결선 전용 (8/22 저녁): CHAMPION 슬롯 강조 스타일 */
+  championSlot?: boolean;
 }) {
   const live = match.status === 'live';
   const done = match.status === 'done';
@@ -241,10 +247,18 @@ function PairColumn({
   return (
     <div className="flex flex-col items-center">
       <div
-        className={`w-44 rounded-lg py-1.5 text-center text-xs font-bold 2xl:w-56 2xl:text-sm ${
-          done ? 'border border-(--orange)/45' : 'border border-dashed border-white/20'
+        className={`rounded-lg py-1.5 text-center text-xs font-bold 2xl:text-sm ${
+          championSlot && !done ? 'champ-slot w-52 py-2 2xl:w-64' : 'w-44 2xl:w-56'
+        } ${
+          done
+            ? 'border border-(--orange)/45'
+            : championSlot
+              ? ''
+              : slotBg
+                ? 'border border-white/10'
+                : 'border border-dashed border-white/20'
         }`}
-        style={{ background: done ? 'var(--orange-glow)' : 'rgba(255,255,255,0.03)' }}
+        style={{ background: done ? 'var(--orange-glow)' : championSlot ? undefined : (slotBg ?? 'rgba(255,255,255,0.03)') }}
       >
         {done ? (
           <>
@@ -1056,6 +1070,9 @@ export default function ViewerPage() {
   // 결선은 해당 없음: 공개 즉시 발표 간주(결선 특례)라 done 이면 항상 announced
   const frozen = state.matches.find((m) => m.status === 'done' && !isAnnounced(m) && m.id !== 'F') ?? null;
   const champion = isAnnounced(final);
+  // 추첨 전에는 준결승 두 쌍 대신 중앙 집결 박스 하나 (8/22 저녁 — R1 승자가 모이는 곳)
+  const semisDrawn = [semi1, semi2].every((m) => m.a !== null && m.b !== null);
+  const r1Matches = state.matches.filter((m) => m.round === 1);
 
   return (
     <main className="flex min-h-dvh flex-col px-5 pb-3 pt-5 lg:px-10">
@@ -1365,6 +1382,23 @@ export default function ViewerPage() {
         .draw-gname { animation: rise 0.4s ease-out 0.15s both, drawNameOut 0.35s ease-in 0.95s forwards; }
         @keyframes drawNameOut { to { opacity: 0; } }
         .draw-name { animation: rise 0.5s ease-out both; }
+        /* 대진표 배경 + CHAMPION 슬롯 (8/22 저녁 — "배경 추가", "CHAMPION 디자인") */
+        .bracket-backdrop { pointer-events: none; animation: backdropIn 0.9s ease-out both; }
+        .bracket-beam {
+          position: absolute; top: -20vh; width: 16vw; height: 90vh;
+          background: linear-gradient(180deg, rgba(255,214,165,0.05), transparent 75%);
+          clip-path: polygon(38% 0, 62% 0, 100% 100%, 0 100%);
+        }
+        .champ-slot {
+          border: 1px solid rgba(236,108,1,0.6);
+          background: linear-gradient(180deg, rgba(236,108,1,0.2), rgba(236,108,1,0.05));
+          box-shadow: 0 0 26px rgba(236,108,1,0.28), inset 0 0 16px rgba(236,108,1,0.12);
+        }
+        .champ-slot-text {
+          background: linear-gradient(90deg, #ffd9a8, #ec6c01 55%, #ffb25e);
+          -webkit-background-clip: text; background-clip: text; color: transparent;
+          filter: drop-shadow(0 0 10px rgba(236,108,1,0.45));
+        }
         .vs-backdrop { pointer-events: none; animation: backdropIn 0.9s ease-out both; }
         @keyframes backdropIn { from { opacity: 0; } }
         .vs-glow { animation: glowBreathe 4s ease-in-out infinite; }
@@ -1410,57 +1444,123 @@ export default function ViewerPage() {
       {/* 대진표 — xl(1280px) 이상은 피라미드형. 8/22 개편: 세 라운드 전부 R1 과 같은
           개별 카드 열(PairColumn)로 통일. 승자 슬롯 라벨은 R1 = 트랙명(같은 트랙 대결),
           R2/F = 진출처. xl 미만은 물리적으로 좁아 세로 스택 유지 */}
-      <div className="pyramid-zoom hidden flex-1 flex-col justify-center py-2 xl:flex">
+      {/* 대진표 배경 (8/22 저녁) — 무대 스포트라이트 톤의 은은한 글로우.
+          fixed z-0 레이어라 본문에 relative z-10 필요 (FocusLive 배경과 같은 구조) */}
+      <div className="bracket-backdrop fixed inset-0 z-0" aria-hidden>
+        <div
+          className="absolute"
+          style={{
+            left: '50%', top: '-18%', width: '72vw', height: '72vw', transform: 'translateX(-50%)',
+            background: 'radial-gradient(circle, rgba(236,108,1,0.11) 0%, rgba(236,108,1,0.04) 42%, transparent 65%)',
+          }}
+        />
+        <div className="bracket-beam" style={{ left: '50%', marginLeft: '-30vw', rotate: '24deg' }} />
+        <div className="bracket-beam" style={{ left: '50%', marginLeft: '24vw', rotate: '-24deg' }} />
+        <div
+          className="absolute inset-0"
+          style={{ background: 'radial-gradient(ellipse 90% 70% at 50% 45%, transparent 55%, rgba(0,0,0,0.5) 100%)' }}
+        />
+      </div>
+      <div className="pyramid-zoom relative z-10 hidden flex-1 flex-col justify-center py-2 xl:flex">
         {/* 연결선 + 3개 라운드를 절반 셀 그리드로 — 연결선 끝점 = 준결승 열 중심 =
             하위 두 열 중점이 수치 없이 자동 성립 (8/22 정렬 결정 유지) */}
         <div className="relative mx-auto grid w-fit grid-cols-2 gap-x-7 2xl:gap-x-10">
-          {/* 결선 열 — 두 셀에 걸쳐 중앙 */}
+          {/* 결선 열 — 두 셀에 걸쳐 중앙. CHAMPION 슬롯은 전용 강조 스타일 (8/22 저녁) */}
           <div className="col-span-2 flex justify-center">
-            <PairColumn state={state} match={final} slotLabel="CHAMPION" />
-          </div>
-          {/* 연결선 줄 — 자체 그리드(같은 gap)라 절대 요소의 top 기준이 이 줄이 된다 */}
-          <div className="relative col-span-2 grid grid-cols-2 gap-x-9 2xl:gap-x-14">
-            <ConnectorHalf side="l" drawn={final.a !== null && final.b !== null} />
-            <ConnectorHalf side="r" drawn={final.a !== null && final.b !== null} />
-            {/* 그리드 gap 이 끊는 가로선 중앙 구간 + 결선으로 오르는 스텁 */}
-            <div
-              className="absolute left-1/2 w-9 -translate-x-1/2 2xl:w-14"
-              style={{ top: 14, borderTop: connLine(final.a !== null && final.b !== null) }}
-              aria-hidden
-            />
-            <div
-              className="absolute left-1/2 top-0"
-              style={{ height: 14, borderLeft: connLine(final.a !== null && final.b !== null) }}
-              aria-hidden
+            <PairColumn
+              state={state}
+              match={final}
+              championSlot
+              slotLabel={
+                <span className="font-display champ-slot-text text-sm tracking-[0.28em] 2xl:text-base">
+                  🏆 CHAMPION
+                </span>
+              }
             />
           </div>
-          {[semi1, semi2].map((semi) => (
-            <div key={semi.id} className="flex justify-center">
-              <PairColumn state={state} match={semi} slotLabel="FINAL 진출" />
+          {/* 연결선 줄 — 추첨 전에는 중앙 집결 박스 하나뿐이라 중앙 스텁만 (8/22 저녁) */}
+          {semisDrawn ? (
+            <div className="relative col-span-2 grid grid-cols-2 gap-x-9 2xl:gap-x-14">
+              <ConnectorHalf side="l" drawn={final.a !== null && final.b !== null} />
+              <ConnectorHalf side="r" drawn={final.a !== null && final.b !== null} />
+              {/* 그리드 gap 이 끊는 가로선 중앙 구간 + 결선으로 오르는 스텁 */}
+              <div
+                className="absolute left-1/2 w-9 -translate-x-1/2 2xl:w-14"
+                style={{ top: 14, borderTop: connLine(final.a !== null && final.b !== null) }}
+                aria-hidden
+              />
+              <div
+                className="absolute left-1/2 top-0"
+                style={{ height: 14, borderLeft: connLine(final.a !== null && final.b !== null) }}
+                aria-hidden
+              />
             </div>
-          ))}
-          {[state.matches.filter((m) => m.round === 1).slice(0, 2), state.matches.filter((m) => m.round === 1).slice(2)].map(
-            (half, i) => (
-              <div key={i} className="mt-6 flex gap-7 2xl:gap-10">
-                {half.map((m) => (
+          ) : (
+            <div className="relative col-span-2 h-8 2xl:h-9" aria-hidden>
+              <div className="absolute bottom-0 left-1/2 top-0" style={{ borderLeft: connLine(false) }} />
+            </div>
+          )}
+          {/* 준결승 — 추첨 후에만 두 쌍으로. 추첨 전에는 R1 승자 4팀이 모이는
+              중앙 박스 하나 (8/22 저녁 운영자: "가운데 박스 하나에 합쳐라") */}
+          {semisDrawn ? (
+            [semi1, semi2].map((semi) => (
+              <div key={semi.id} className="flex justify-center">
+                <PairColumn state={state} match={semi} slotLabel="FINAL 진출" />
+              </div>
+            ))
+          ) : (
+            <div className="col-span-2 flex justify-center">
+              <div className="rounded-2xl border border-dashed border-white/20 bg-white/3 px-8 py-4 2xl:px-10 2xl:py-5">
+                <p className="mb-3 text-center text-xs font-bold text-white/40 2xl:text-sm">
+                  FINAL 진출 — R1 승자 집결 · 대진 추첨 대기
+                </p>
+                <div className="flex items-start justify-center gap-5 2xl:gap-6">
+                  {r1Matches.map((m) => {
+                    const idx = winningTeamId(m);
+                    const team = teamAt(state, idx);
+                    return idx !== null && team ? (
+                      <div key={m.id} className="w-24 text-center 2xl:w-28">
+                        <CharacterArt characterKey={team.character} className="chip-outer mx-auto aspect-2/3 w-full" sizes="112px" />
+                        <p className="mt-1.5 line-clamp-1 text-xs font-extrabold 2xl:text-sm">{teamName(state, idx)}</p>
+                      </div>
+                    ) : (
+                      <div key={m.id} className="w-24 text-center 2xl:w-28">
+                        <div className="grid aspect-2/3 w-full place-items-center rounded-lg border border-dashed border-white/15 bg-white/2 text-xl font-extrabold text-white/20">
+                          ?
+                        </div>
+                        <p className="font-en mt-1.5 text-xs font-bold text-white/30 2xl:text-sm">{m.id} 승자</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+          {[r1Matches.slice(0, 2), r1Matches.slice(2)].map((half, i) => (
+            <div key={i} className="mt-6 flex gap-7 2xl:gap-10">
+              {half.map((m) => {
+                const track = teamAt(state, m.a)?.track;
+                return (
                   <PairColumn
                     key={m.id}
                     state={state}
                     match={m}
                     showDest
+                    slotBg={track ? TRACK_COLORS[track] : undefined}
                     slotLabel={
-                      <span
-                        className="font-en tracking-wider"
-                        style={{ color: TRACK_COLORS[teamAt(state, m.a)?.track ?? 'OPEN'] }}
-                      >
-                        {teamAt(state, m.a)?.track ?? '트랙 미정'}
-                      </span>
+                      track ? (
+                        // 트랙 컬러는 배경으로 (8/22 저녁 — 글자색 표기 번복), 글자는 흰색 고정:
+                        // 네 트랙색(핑크·그린·퍼플·블루) 모두에서 흰 글자가 안전하다
+                        <span className="font-en font-extrabold tracking-wider text-white">{track} TRACK</span>
+                      ) : (
+                        '트랙 미정'
+                      )
                     }
                   />
-                ))}
-              </div>
-            ),
-          )}
+                );
+              })}
+            </div>
+          ))}
         </div>
       </div>
 
