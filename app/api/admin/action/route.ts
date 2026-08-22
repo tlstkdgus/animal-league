@@ -114,14 +114,16 @@ export async function POST(request: Request): Promise<Response> {
             return fail(400, 'BAD_WINNER', '승자는 A 또는 B 여야 합니다.');
           }
           const winner = body.winner;
-          // 스크린 투표 오픈 연출용 익명 표 — 명의를 떼고 순서를 셔플해 공개 상태에 싣는다.
-          // 제출 순서(ts)가 남으면 운영 화면을 본 사람이 명의를 역추적할 수 있어 순서도 지운다 (§3).
+          // 스크린 투표 오픈 연출용 표 — {진영, 명의} 쌍으로 싣는다 (§6.1 8/22 저녁:
+          // 정지 화면 카드에 심사위원 이름 표기, §3 "명의를 떼고 공개" 번복 — 운영자 결정).
+          // 제출 순서(ts)는 여전히 지운다: 셔플/연출 정렬이 순서를 새로 정한다.
           const rows = await votesForMatch(matchId);
-          // 결선은 연출 정렬(패자 우선 번갈아 — 마지막 장이 승부 확정, §6.1 8/22),
-          // 나머지는 셔플. 어느 쪽이든 명의·제출 순서는 사라진다 (§3)
-          const marks = rows.map((r) => r.winner);
-          const anonVotes = matchId === 'F' ? finalRevealOrder(marks, winner) : shuffle(marks);
-          return ok({ state: adminView(await mutate((s) => revealResult(s, matchId, winner, anonVotes))) });
+          // 결선은 연출 정렬(패자 우선 번갈아 — 마지막 장이 승부 확정, §6.1 8/22), 나머지는 셔플
+          const pairs = rows.map((r) => ({ w: r.winner, name: r.name }));
+          const ordered = matchId === 'F' ? finalRevealOrder(pairs, winner, (p) => p.w) : shuffle(pairs);
+          const anonVotes = ordered.map((p) => p.w);
+          const names = ordered.map((p) => p.name);
+          return ok({ state: adminView(await mutate((s) => revealResult(s, matchId, winner, anonVotes, names))) });
         }
 
         case 'announceResult': {
