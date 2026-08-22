@@ -15,6 +15,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { CARD_RADIUS, CharacterArt, SchoolTag, Wordmark } from '@/components/ui';
+import { armSfx, playFlip } from '@/lib/sfx';
 import { winningTeamId, type Match, type Team } from '@/lib/tournament';
 
 type PublicState = { teams: Team[]; matches: Match[]; rev: number };
@@ -471,6 +472,9 @@ function RevealSequence({ state, match }: { state: PublicState; match: Match }) 
             >
               <div
                 className="chip-inner relative h-full w-full"
+                // 플립 시작 = 효과음, 플립 종료 = 집계 오픈. 같은 애니메이션의 양 끝 이벤트라
+                // 소리와 화면이 어긋날 수 없다 (단일 시계 원칙의 연장, PR #24 참조)
+                onAnimationStart={(e) => e.animationName === 'chipFlip' && playFlip()}
                 onAnimationEnd={(e) => e.animationName === 'chipFlip' && setOpened((n) => Math.max(n, i + 1))}
                 style={{ animationDelay: `${(i * CHIP_INTERVAL_MS) / 1000}s` }}
               >
@@ -523,7 +527,11 @@ function DrawCard({ state, index, order }: { state: PublicState; index: number |
       className="draw-outer relative aspect-2/3 w-28 lg:w-36"
       style={{ animation: `drawShuf${order} 2.2s cubic-bezier(0.35, 0, 0.25, 1) 0.2s both` }}
     >
-      <div className="chip-inner relative h-full w-full" style={{ animationDelay: `${DRAW_FLIP_BASE_S + order * 0.5}s` }}>
+      <div
+        className="chip-inner relative h-full w-full"
+        onAnimationStart={(e) => e.animationName === 'chipFlip' && playFlip()}
+        style={{ animationDelay: `${DRAW_FLIP_BASE_S + order * 0.5}s` }}
+      >
         <div
           className="chip-face absolute inset-0 overflow-hidden border border-(--orange)/40 bg-white/5"
           style={{ borderRadius: CARD_RADIUS, boxShadow: '0 0 24px rgba(236,108,1,0.25)' }}
@@ -687,6 +695,10 @@ export default function ViewerPage() {
       clearInterval(timer);
     };
   }, [poll]);
+
+  // 효과음 준비 — 자동재생 정책상 첫 클릭/키 입력 후부터 소리가 난다 (lib/sfx.ts).
+  // 무대 운영: 프로젝터 창에서 F(전체화면)를 누르는 것만으로도 언락된다.
+  useEffect(() => armSfx(), []);
 
   if (state === null) {
     return (
