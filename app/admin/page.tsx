@@ -676,7 +676,8 @@ function MatchCard({
       )}
 
       {/* 2단계 공개의 2단계 (8/22, §6.1) — 공개 후 스크린은 카드 정지 화면에 머문다.
-          심사위원 코멘트가 끝나면 이 버튼으로 결과 화면(결선은 우승 무대)을 송출 */}
+          심사위원 코멘트가 끝나면 이 버튼으로 결과 화면을 송출.
+          결선에는 안 뜬다 — 공개 즉시 발표 간주(결선 특례)라 isAnnounced 가 이미 true */}
       {match.status === 'done' && !isAnnounced(match) && (
         <div className="mt-2">
           <button
@@ -684,7 +685,7 @@ function MatchCard({
             onClick={onAnnounce}
             className="w-full animate-pulse rounded-lg bg-[var(--orange)] py-2 text-sm font-extrabold text-white disabled:opacity-40"
           >
-            📣 발표 — {match.id === 'F' ? '우승 무대 송출' : '결과 화면 송출'}
+            📣 발표 — 결과 화면 송출
           </button>
           <p className="mt-1 text-[11px] text-white/40">
             스크린은 표 카드 정지 화면입니다. 심사위원 코멘트가 끝나면 누르세요.
@@ -727,28 +728,23 @@ function MatchesTab({
     }
   };
 
-  // 발표 (2단계 공개의 2단계) — 결선만 확인을 거친다 (우승 무대 전환이라).
-  // R1·R2 는 진행 속도 우선으로 즉시 — 이미 공개된 결과의 송출 타이밍일 뿐이다
+  // 발표 (2단계 공개의 2단계) — R1·R2 전용. 이미 공개된 결과의 송출 타이밍일 뿐이라
+  // 진행 속도 우선으로 즉시. 결선은 발표 단계 자체가 없다 (공개 즉시 발표, 결선 특례)
   const announceMatch = (match: Match) => {
-    if (match.id === 'F') {
-      askConfirm({
-        title: '우승 발표',
-        body: '스크린이 우승 무대 연출로 전환됩니다.\nMC 카운트다운 "3" 시점에 누르면 "1!"에 맞춰 뜹니다 (반영 최대 3초).',
-        confirmLabel: '발표',
-        danger: true,
-        onConfirm: () => run({ action: 'announceResult', matchId: match.id }),
-      });
-    } else {
-      run({ action: 'announceResult', matchId: match.id });
-    }
+    run({ action: 'announceResult', matchId: match.id });
   };
 
   const revealWithConfirm = (match: Match) => (side: Side, tallyText: string) => {
     const index = side === 'A' ? match.a : match.b;
     const name = teamLabel(state.teams[index ?? -1] ?? null, index);
+    // 결선은 공개가 곧 발표 (결선 특례, 8/22 저녁 — MC 큐시트 카운트다운 대응):
+    // 표 연출이 끝나면 우승 무대가 자동으로 뜬다는 걸 확인 창에서 못박는다
     askConfirm({
-      title: '결과 공개',
-      body: `「${name}」 승리로 공개합니다.\n${tallyText}\n\n공개 즉시 스크린에 발표되며 되돌릴 수 없습니다.`,
+      title: match.id === 'F' ? '결선 공개 = 우승 발표' : '결과 공개',
+      body:
+        match.id === 'F'
+          ? `「${name}」 우승으로 공개합니다.\n${tallyText}\n\n표 카드가 한 장씩 열리고(패자 표 먼저, 마지막 장이 확정) 연출이 끝나면 우승 무대로 자동 전환됩니다 — 표 5장 기준 클릭 후 약 12초, 표 0건이면 즉시. 되돌릴 수 없습니다.`
+          : `「${name}」 승리로 공개합니다.\n${tallyText}\n\n공개 즉시 스크린에 발표되며 되돌릴 수 없습니다.`,
       confirmLabel: '공개 (되돌릴 수 없음)',
       danger: true,
       onConfirm: () => run({ action: 'revealResult', matchId: match.id, winner: side }),

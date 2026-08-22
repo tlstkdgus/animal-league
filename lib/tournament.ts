@@ -365,9 +365,18 @@ export function revealResult(
     throw new TournamentError('NOT_LIVE', `${target.id} 을 먼저 시작해야 결과를 공개할 수 있습니다.`);
   }
 
-  // 공개와 함께 타이머 해제 — 심사 시간이 끝난 화면에 시계가 남아 있으면 안 된다
+  // 공개와 함께 타이머 해제 — 심사 시간이 끝난 화면에 시계가 남아 있으면 안 된다.
+  // 결선 특례 (8/22 저녁, MC 큐시트 대조): 결선은 공개 즉시 발표 간주 — [발표] 단계가
+  // 없다. 큐시트의 "5-4-3-2-1 → LED 결과 화면"은 코멘트 정지 구간 없이 표 연출이
+  // 끝나면 바로 우승 무대가 떠야 하고, 정지 화면을 끼우면 카운트다운 전에 스포일된다
   return {
-    ...replaceMatch(state, target.id, { status: 'done', winner, votes: [...votes], voteNames: [...names] }),
+    ...replaceMatch(state, target.id, {
+      status: 'done',
+      winner,
+      votes: [...votes],
+      voteNames: [...names],
+      ...(target.id === FINAL_ID ? { announced: true } : {}),
+    }),
     timer: null,
   };
 }

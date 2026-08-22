@@ -963,6 +963,9 @@ export default function ViewerPage() {
   const [state, setState] = useState<PublicState | null>(null);
   // 결과 화면 — 발표(announced) 전이 순간의 경기 스냅샷 고정, RESULT_SCENE_MS 후 대진표
   const [resultScene, setResultScene] = useState<Match | null>(null);
+  // 결선 표 연출 — 결선 공개는 즉시 발표 간주(결선 특례, 8/22 저녁)라 정지 화면이
+  // 없다. 대신 이 1회성 시퀀스가 표 카드를 다 연 뒤 우승 테이크오버에 자리를 내준다
+  const [finalSeq, setFinalSeq] = useState<Match | null>(null);
   // R2 추첨 시퀀스 — 추첨 순간의 준결승 스냅샷 고정 (폴링 갱신에 흔들리지 않게)
   const [drawSeq, setDrawSeq] = useState<[Match, Match] | null>(null);
   const revRef = useRef(0);
@@ -992,6 +995,19 @@ export default function ViewerPage() {
           setResultScene(justAnnounced);
           setTimeout(() => setResultScene(null), RESULT_SCENE_MS);
         }
+        // 결선 특례 — 공개(=발표) 순간 표 연출을 1회 재생한 뒤 우승 무대로.
+        // 표 0건(백업 모드)은 연출 없이 즉시 우승 무대. 첫 폴링 가드(prevA)로
+        // 우승 확정 상태에서 새로고침한 화면의 재재생을 막는다 (§6.1)
+        const finalJust = next.matches.find(
+          (m) => m.id === 'F' && isAnnounced(m) && prevA[m.id] === false && (m.votes?.length ?? 0) > 0,
+        );
+        if (finalJust) {
+          setFinalSeq(finalJust);
+          setTimeout(
+            () => setFinalSeq(null),
+            (finalJust.votes?.length ?? 0) * CHIP_INTERVAL_MS + 800 + 1600,
+          );
+        }
       }
       prevAnnouncedRef.current = Object.fromEntries(next.matches.map((m) => [m.id, isAnnounced(m)]));
 
@@ -1010,8 +1026,10 @@ export default function ViewerPage() {
   }, []);
 
   useEffect(() => {
+    // 1.5초 폴링 (8/22 저녁, 3초에서 단축): 스크린이 프로젝터 전용이라 클라이언트가
+    // 소수 — 콘솔 클릭 → 스크린 반영 지연(폴링 + CDN 1초 캐시)을 ~2초로 줄인다
     const kickoff = setTimeout(poll, 0);
-    const timer = setInterval(poll, 3000);
+    const timer = setInterval(poll, 1500);
     return () => {
       clearTimeout(kickoff);
       clearInterval(timer);
@@ -1035,10 +1053,8 @@ export default function ViewerPage() {
   const semi1 = byId(state, 'R2-1');
   const semi2 = byId(state, 'R2-2');
   // 정지 화면은 상태 파생 — done && 미발표(표 있음)면 새로고침해도 그대로 유지된다.
-  // 결선은 제외: 결선 정지 화면 뒤의 발표는 우승 테이크오버가 담당
-  const frozen =
-    state.matches.find((m) => m.status === 'done' && !isAnnounced(m) && m.id !== 'F') ??
-    (final.status === 'done' && !isAnnounced(final) ? final : null);
+  // 결선은 해당 없음: 공개 즉시 발표 간주(결선 특례)라 done 이면 항상 announced
+  const frozen = state.matches.find((m) => m.status === 'done' && !isAnnounced(m) && m.id !== 'F') ?? null;
   const champion = isAnnounced(final);
 
   return (
@@ -1378,11 +1394,13 @@ export default function ViewerPage() {
 
       {/* 헤더·푸터·안내 문구는 전부 제거 (8/22 운영자: 무대에 필요없는 멘트 삭제) —
           화면은 연출과 대진표만 남긴다. 본문 우선순위:
-          표 정지 화면 > 결과 화면 > 추첨 시퀀스 > live 대결 포커스 > 대진표 (§6.1) */}
+          표 정지 화면 > 결과 화면 > 결선 표 연출 > 추첨 시퀀스 > live 대결 포커스 > 대진표 (§6.1) */}
       {frozen ? (
         <FreezeReveal state={state} match={frozen} />
       ) : resultScene ? (
         <ResultScene state={state} match={resultScene} />
+      ) : finalSeq ? (
+        <FreezeReveal state={state} match={finalSeq} />
       ) : drawSeq ? (
         <DrawSequence state={state} semis={drawSeq} />
       ) : live ? (
@@ -1466,9 +1484,9 @@ export default function ViewerPage() {
         </>
       )}
 
-      {/* 우승 테이크오버 — 결선 발표(announced) 즉시. 정지 화면과는 공존 불가
-          (결선은 발표 액션이 곧 우승 무대 전환이다) */}
-      {champion && <ChampionTakeover state={state} final={final} />}
+      {/* 우승 테이크오버 — 결선 공개(=발표, 결선 특례) 시. 표 연출(finalSeq)이
+          도는 동안은 뒤로 미룬다: 마지막 카드가 승부를 확정한 직후에 슬램이 떨어진다 */}
+      {champion && !finalSeq && <ChampionTakeover state={state} final={final} />}
     </main>
   );
 }
