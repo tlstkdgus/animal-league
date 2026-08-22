@@ -186,7 +186,7 @@ function TeamSolo({
 
   return (
     <div
-      className={`w-34 rounded-xl border p-2.5 pb-3 text-center transition-colors 2xl:w-38 ${isLoser ? 'opacity-30' : ''}`}
+      className={`w-34 rounded-xl border p-2.5 pb-3 text-center transition-colors 2xl:w-44 ${isLoser ? 'opacity-30' : ''}`}
       style={{
         borderColor: isWinner ? 'rgba(236,108,1,0.55)' : 'rgba(255,255,255,0.1)',
         background: isWinner
@@ -196,10 +196,10 @@ function TeamSolo({
     >
       <CharacterArt
         characterKey={team?.character ?? null}
-        className="mx-auto aspect-2/3 w-16 2xl:w-19"
-        sizes="76px"
+        className="mx-auto aspect-2/3 w-16 2xl:w-20"
+        sizes="80px"
       />
-      <div className="mt-2 line-clamp-2 text-[13px] font-extrabold leading-tight tracking-tight 2xl:text-sm">
+      <div className="mt-2 line-clamp-2 text-[13px] font-extrabold leading-tight tracking-tight 2xl:text-base">
         {teamName(state, index)}
       </div>
       {/* 학교명 한 줄 + 말줄임. 트랙은 카드에서 빼고 승자 슬롯 라벨이 담당한다
@@ -241,7 +241,7 @@ function PairColumn({
   return (
     <div className="flex flex-col items-center">
       <div
-        className={`w-44 rounded-lg py-1.5 text-center text-xs font-bold 2xl:w-48 ${
+        className={`w-44 rounded-lg py-1.5 text-center text-xs font-bold 2xl:w-56 2xl:text-sm ${
           done ? 'border border-(--orange)/45' : 'border border-dashed border-white/20'
         }`}
         style={{ background: done ? 'var(--orange-glow)' : 'rgba(255,255,255,0.03)' }}
@@ -267,14 +267,14 @@ function PairColumn({
           테두리·승자 하이라이트를 갖고 있어 박스 없이도 대진이 읽힌다.
           live 강조는 대결 포커스 화면이 대신하므로 (live 면 브래킷 자체가 안 보임)
           박스의 live 테두리도 함께 정리 — LIVE 배지만 남긴다 */}
-      <div className="relative flex items-center gap-2.5 2xl:gap-3">
+      <div className="relative flex items-center gap-2.5 2xl:gap-4">
         {live && (
           <span className="live-pulse absolute -top-2.5 left-1/2 -translate-x-1/2 rounded bg-(--live) px-1.5 py-0.5 text-[10px] font-extrabold text-white">
             LIVE
           </span>
         )}
         <TeamSolo state={state} index={match.a} match={match} side="A" />
-        <span className="text-[10px] font-extrabold text-white/25">VS</span>
+        <span className="text-[10px] font-extrabold text-white/25 2xl:text-xs">VS</span>
         <TeamSolo state={state} index={match.b} match={match} side="B" />
       </div>
     </div>
@@ -332,11 +332,11 @@ function TeamHero({
     >
       <CharacterArt
         characterKey={team?.character ?? null}
-        className={`aspect-2/3 ${compact ? 'w-36 lg:w-44 2xl:w-56' : 'w-44 lg:w-60 2xl:w-72'} ${winner ? 'shadow-[0_0_70px_rgba(236,108,1,0.4)]' : ''}`}
-        sizes="(min-width: 1536px) 288px, (min-width: 1024px) 240px, 176px"
+        className={`aspect-2/3 ${compact ? 'w-36 lg:w-44 2xl:w-56' : 'w-44 lg:w-60 2xl:w-80'} ${winner ? 'shadow-[0_0_70px_rgba(236,108,1,0.4)]' : ''}`}
+        sizes="(min-width: 1536px) 320px, (min-width: 1024px) 240px, 176px"
       />
       <p
-        className={`mt-5 max-w-full font-extrabold leading-tight tracking-tight ${compact ? 'text-2xl lg:text-3xl 2xl:text-4xl' : 'text-3xl lg:text-5xl 2xl:text-6xl'}`}
+        className={`mt-5 max-w-full font-extrabold leading-tight tracking-tight ${compact ? 'text-2xl lg:text-3xl 2xl:text-4xl' : 'text-3xl lg:text-5xl 2xl:text-7xl'}`}
         style={{ textWrap: 'balance' }}
       >
         {teamName(state, index)}
@@ -602,7 +602,7 @@ function DrawCard({ state, index, order }: { state: PublicState; index: number |
   // 이동·공개 플립은 forwards 만 쓴다 (both 는 딜레이 중에도 0% 를 그려버린다).
   return (
     <div
-      className="draw-outer relative aspect-2/3 w-28 lg:w-36 2xl:w-44"
+      className="draw-outer relative aspect-2/3 w-28 lg:w-36 2xl:w-48"
       style={{
         ['--gr' as string]: `${(order - 1.5) * 5}deg`,
         animation: `drawGather 1.2s cubic-bezier(0.4, 0, 0.2, 1) 1s forwards,
@@ -1401,12 +1401,12 @@ export default function ViewerPage() {
             <PairColumn state={state} match={final} slotLabel="CHAMPION" />
           </div>
           {/* 연결선 줄 — 자체 그리드(같은 gap)라 절대 요소의 top 기준이 이 줄이 된다 */}
-          <div className="relative col-span-2 grid grid-cols-2 gap-x-7 2xl:gap-x-10">
+          <div className="relative col-span-2 grid grid-cols-2 gap-x-9 2xl:gap-x-14">
             <ConnectorHalf side="l" drawn={final.a !== null && final.b !== null} />
             <ConnectorHalf side="r" drawn={final.a !== null && final.b !== null} />
             {/* 그리드 gap 이 끊는 가로선 중앙 구간 + 결선으로 오르는 스텁 */}
             <div
-              className="absolute left-1/2 w-7 -translate-x-1/2 2xl:w-10"
+              className="absolute left-1/2 w-9 -translate-x-1/2 2xl:w-14"
               style={{ top: 14, borderTop: connLine(final.a !== null && final.b !== null) }}
               aria-hidden
             />
