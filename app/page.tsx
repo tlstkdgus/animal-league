@@ -12,7 +12,7 @@
 // 결과 공개 연출은 직전 스냅샷과의 status diff 로 감지한 1회성 애니메이션 (~3초),
 // prefers-reduced-motion 이면 정지 상태로 표시만 한다.
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { cardRadiusWithBorder, CharacterArt, SchoolTag, TRACK_COLORS, Wordmark } from '@/components/ui';
 import { armSfx, playChips, playFan, playFanfare, playFlip, playImpact, playShuffle, playVersus } from '@/lib/sfx';
@@ -586,27 +586,37 @@ function ResultScene({ state, match }: { state: PublicState; match: Match }) {
 }
 
 // ------------------------------------------------------------
-// R2 추첨 연출 — 뒷면 카드 4장 셔플 → 순서대로 뒤집혀 대진 공개 (8/20 확정)
+// R2 추첨 연출 — 모으기 → 뒤집어 셔플 → 배치·공개 (8/22 저녁 재지시:
+// "진출 4팀을 한군데 모은 다음에 랜덤으로 돌려서 배치")
 // ------------------------------------------------------------
 
 /** 추첨 시퀀스 전체 길이(ms) — ViewerPage 의 종료 타이머와 아래 딜레이들이 공유한다. */
-const DRAW_SEQUENCE_MS = 8000;
-/** 카드 플립 시작 시점(s) — 셔플(2.2s)이 끝난 뒤 0.5s 간격으로 4장. */
-const DRAW_FLIP_BASE_S = 2.6;
+const DRAW_SEQUENCE_MS = 11000;
+/** 공개 플립 시작 시점(s) — 모으기(1.0~2.2) → 뒤집기(2.3) → 셔플(2.9~5.3) → 복귀(5.5~6.5) 뒤. */
+const DRAW_FLIP_BASE_S = 6.7;
 
 function DrawCard({ state, index, order }: { state: PublicState; index: number | null; order: number }) {
   const team = teamAt(state, index);
+  // 이동 3단계 + 플립 2단계를 전부 CSS 애니메이션 시퀀스로 (JS 타이머로 CSS 를
+  // 복제하지 않는다 — 단일 시계 원칙, PR #24). 딜레이 전 구간에 fill 이 새지 않게
+  // 이동·공개 플립은 forwards 만 쓴다 (both 는 딜레이 중에도 0% 를 그려버린다).
   return (
-    // 2xl 확대: 셔플 키프레임(drawShufN)은 lg w-36 기준 픽셀이라 2xl(176px)에서는
-    // 교차 폭이 약간 얕아진다 — 시각적으로 허용 범위 (무대 확대가 우선, 8/22)
     <div
       className="draw-outer relative aspect-2/3 w-28 lg:w-36 2xl:w-44"
-      style={{ animation: `drawShuf${order} 2.2s cubic-bezier(0.35, 0, 0.25, 1) 0.2s both` }}
+      style={{
+        ['--gr' as string]: `${(order - 1.5) * 5}deg`,
+        animation: `drawGather 1.2s cubic-bezier(0.4, 0, 0.2, 1) 1s forwards,
+          drawMix${order} 2.4s ease-in-out 2.9s forwards,
+          drawReturn 1s cubic-bezier(0.4, 0, 0.2, 1) 5.5s forwards`,
+      }}
     >
       <div
         className="chip-inner relative h-full w-full"
         onAnimationStart={(e) => e.animationName === 'chipFlip' && playFlip()}
-        style={{ animationDelay: `${DRAW_FLIP_BASE_S + order * 0.5}s` }}
+        style={{
+          animation: `drawToBack 0.45s ease 2.3s forwards,
+            chipFlip 0.6s cubic-bezier(0.3, 0.8, 0.3, 1) ${DRAW_FLIP_BASE_S + order * 0.5}s forwards`,
+        }}
       >
         {/* 공개 칩과 같은 밀착 곡률 (8/22) — 바깥 radius = 카드 곡률 + 테두리 */}
         <div
@@ -624,7 +634,12 @@ function DrawCard({ state, index, order }: { state: PublicState; index: number |
           <Image src="/card-back-0624.png" alt="" fill sizes="176px" className="object-cover" />
         </div>
       </div>
-      {/* 팀명은 카드가 뒤집힌 뒤에 떠오른다 */}
+      {/* 도입 팀명 — 모으기 전 앞면 카드 밑 (누가 진출 4팀인지 보여주는 단계).
+          모으기 시작과 함께 사라진다. reduced-motion 은 완성 상태만 보이므로 숨김 */}
+      <p className="draw-gname absolute -bottom-8 left-1/2 w-40 -translate-x-1/2 text-center text-sm font-extrabold lg:text-base 2xl:text-lg">
+        {teamName(state, index)}
+      </p>
+      {/* 확정 팀명 — 공개 플립 뒤에 떠오른다 */}
       <p
         className="draw-name absolute -bottom-8 left-1/2 w-40 -translate-x-1/2 text-center text-sm font-extrabold lg:text-base 2xl:text-lg"
         style={{ animationDelay: `${DRAW_FLIP_BASE_S + order * 0.5 + 0.45}s` }}
@@ -636,24 +651,49 @@ function DrawCard({ state, index, order }: { state: PublicState; index: number |
 }
 
 /**
- * R2 추첨 공개 — 브래킷 대신 전면 재생. 뒷면 카드 4장이 교차하며 섞이고,
- * 자리를 잡은 뒤 한 장씩 뒤집혀 R2-1 / R2-2 대진이 드러난다.
- * 셔플 경로는 CSS 키프레임 4벌 고정 — 실제 무작위성은 서버 추첨(drawRound2)이
- * 이미 만들었고, 화면의 섞임은 그 결과를 발표하는 연출일 뿐이다.
+ * R2 추첨 공개 — 브래킷 대신 전면 재생. 3단계 (8/22 저녁 확정):
+ * ① 모으기 — 진출 4팀의 앞면 카드(팀명 포함)가 화면 중앙 한 덩이로 모인다
+ * ② 셔플 — 모인 채로 전부 뒷면으로 뒤집혀 섞인다
+ * ③ 배치 — 뒷면인 채 두 쌍의 자리로 흩어진 뒤 한 장씩 뒤집혀 대진 공개
+ * 화면의 섞임은 연출일 뿐 — 실제 무작위성은 서버 추첨(drawRound2)이 이미 만들었다.
+ * 중앙까지의 거리는 카드마다 달라 CSS 변수(--gx/--gy)로 마운트 때 실측해 꽂는다
+ * (반응형 간격이라 고정 픽셀 키프레임으로는 중앙에 못 모은다).
  */
 function DrawSequence({ state, semis }: { state: PublicState; semis: [Match, Match] }) {
-  // 셔플 소리 — 셔플 애니메이션(0.2s 딜레이, 2.2s)과 동기. 플립 소리는 카드 쪽
-  // animationstart 가 낸다. reduced-motion 은 셔플 모션 자체가 없으니 소리도 생략.
+  const bedRef = useRef<HTMLDivElement | null>(null);
+
+  // 각 카드 → 컨테이너 중앙 벡터 실측. 애니메이션 딜레이(1s)가 첫 페인트보다 훨씬
+  // 늦어 레이아웃 이펙트가 아니어도 안전하지만, 측정은 페인트 전이 정석이다.
+  useLayoutEffect(() => {
+    const bed = bedRef.current;
+    if (!bed) return;
+    const bedRect = bed.getBoundingClientRect();
+    const cx = bedRect.left + bedRect.width / 2;
+    const cy = bedRect.top + bedRect.height / 2;
+    bed.querySelectorAll<HTMLElement>('.draw-outer').forEach((el) => {
+      const r = el.getBoundingClientRect();
+      el.style.setProperty('--gx', `${cx - (r.left + r.width / 2)}px`);
+      el.style.setProperty('--gy', `${cy - (r.top + r.height / 2)}px`);
+    });
+  }, []);
+
+  // 소리 시계 — 뒤집기(2.3s) 플립 1번, 셔플(2.9s). 공개 플립 4번은 카드 쪽
+  // animationstart 가 낸다. reduced-motion 은 모션이 없으니 소리도 생략.
+  // setTimeout + 클린업 = StrictMode 이중 실행 방어.
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const timer = setTimeout(() => playShuffle(), 200);
-    return () => clearTimeout(timer);
+    const flipTimer = setTimeout(() => playFlip(), 2300);
+    const shuffleTimer = setTimeout(() => playShuffle(), 2900);
+    return () => {
+      clearTimeout(flipTimer);
+      clearTimeout(shuffleTimer);
+    };
   }, []);
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-12 py-6">
       <p className="champion-rise text-2xl font-extrabold tracking-tight lg:text-4xl 2xl:text-5xl">2라운드 대진을 추첨합니다</p>
-      <div className="flex items-start justify-center gap-14 lg:gap-24">
+      <div ref={bedRef} className="flex items-start justify-center gap-14 lg:gap-24">
         {semis.map((semi, s) => (
           <div key={semi.id} className="flex flex-col items-center gap-5">
             <span
@@ -1030,7 +1070,9 @@ export default function ViewerPage() {
            타임라인(--tc 카드 임팩트 등)은 원본 값 그대로. --tc 를 바꾸면
            CHAMP_IMPACT_MS 도 같이 바꿔야 한다 (컨페티 발사 시점). */
         .champ-stage {
-          --cardw: clamp(190px, 40vmin, 384px);
+          /* 8/22 저녁: 좌상단 브랜드 블록이 빠진 무대 여백만큼 확대 (384→432).
+             모든 이펙트·타이포가 --cardw 배수라 이 한 줄이 전체 스케일이다 */
+          --cardw: clamp(190px, 44vmin, 432px);
           --cardh: calc(var(--cardw) * 1.484);
           --tsn: 0.1s; --tf: 0.52s; --tc: 0.56s; --tch: 1.04s; --tn: 1.5s; --tm: 1.92s;
           --eo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -1267,13 +1309,45 @@ export default function ViewerPage() {
         @keyframes chipFlip { from { transform: rotateY(180deg); } to { transform: rotateY(0deg); } }
         .chip-face { backface-visibility: hidden; }
         .chip-back { transform: rotateY(180deg); }
-        /* 추첨 카드 — 셔플 경로 4벌 (교차하며 섞이는 인상). 카드 폭(lg w-36=144px+간격)
-           기준 픽셀이라 배치가 크게 바뀌면 함께 손봐야 한다 */
+        /* 추첨 카드 — 모으기 → 셔플 → 배치 (8/22 저녁). 중앙 벡터(--gx/--gy)는
+           DrawSequence 가 마운트 때 실측해 카드별로 꽂는다 (반응형 간격 대응).
+           --gr = 카드별 기울기 — 겹친 덩이가 부채처럼 보이게 */
         .draw-outer { perspective: 700px; }
-        @keyframes drawShuf0 { 0% { transform: translateX(340px); } 45% { transform: translateX(-140px); } 100% { transform: none; } }
-        @keyframes drawShuf1 { 0% { transform: translateX(-120px); } 45% { transform: translateX(220px); } 100% { transform: none; } }
-        @keyframes drawShuf2 { 0% { transform: translateX(120px); } 45% { transform: translateX(-220px); } 100% { transform: none; } }
-        @keyframes drawShuf3 { 0% { transform: translateX(-340px); } 45% { transform: translateX(140px); } 100% { transform: none; } }
+        @keyframes drawGather {
+          from { transform: none; }
+          to { transform: translate(var(--gx), var(--gy)) rotate(var(--gr)); }
+        }
+        /* 셔플 — 중앙 덩이 안에서 좌우로 엇갈리며 자리를 바꾸는 인상 (4벌).
+           모든 키프레임이 중앙 벡터를 기저로 갖는다 (transform 은 통째로 덮인다) */
+        @keyframes drawMix0 {
+          0%, 100% { transform: translate(var(--gx), var(--gy)) rotate(var(--gr)); }
+          25% { transform: translate(calc(var(--gx) + 70px), var(--gy)) rotate(6deg); }
+          65% { transform: translate(calc(var(--gx) - 46px), calc(var(--gy) + 8px)) rotate(-5deg); }
+        }
+        @keyframes drawMix1 {
+          0%, 100% { transform: translate(var(--gx), var(--gy)) rotate(var(--gr)); }
+          30% { transform: translate(calc(var(--gx) - 64px), calc(var(--gy) - 6px)) rotate(-7deg); }
+          70% { transform: translate(calc(var(--gx) + 52px), var(--gy)) rotate(4deg); }
+        }
+        @keyframes drawMix2 {
+          0%, 100% { transform: translate(var(--gx), var(--gy)) rotate(var(--gr)); }
+          22% { transform: translate(calc(var(--gx) + 48px), calc(var(--gy) + 10px)) rotate(5deg); }
+          60% { transform: translate(calc(var(--gx) - 70px), var(--gy)) rotate(-4deg); }
+        }
+        @keyframes drawMix3 {
+          0%, 100% { transform: translate(var(--gx), var(--gy)) rotate(var(--gr)); }
+          35% { transform: translate(calc(var(--gx) - 50px), var(--gy)) rotate(-6deg); }
+          75% { transform: translate(calc(var(--gx) + 62px), calc(var(--gy) - 8px)) rotate(7deg); }
+        }
+        @keyframes drawReturn {
+          from { transform: translate(var(--gx), var(--gy)) rotate(var(--gr)); }
+          to { transform: none; }
+        }
+        /* 모으기 뒤 전체가 뒷면으로 — 공개(chipFlip: 180→0)의 역방향 */
+        @keyframes drawToBack { from { transform: rotateY(0deg); } to { transform: rotateY(180deg); } }
+        /* 도입 팀명 — 앞면 단계(0~1s)에만, 모으기 시작과 함께 사라진다 */
+        .draw-gname { animation: rise 0.4s ease-out 0.15s both, drawNameOut 0.35s ease-in 0.95s forwards; }
+        @keyframes drawNameOut { to { opacity: 0; } }
         .draw-name { animation: rise 0.5s ease-out both; }
         .vs-backdrop { pointer-events: none; animation: backdropIn 0.9s ease-out both; }
         @keyframes backdropIn { from { opacity: 0; } }
@@ -1288,10 +1362,12 @@ export default function ViewerPage() {
         }
         @keyframes beamShimmer { 50% { opacity: 0.55; } }
         @media (prefers-reduced-motion: reduce) {
-          /* !important: 추첨 카드의 셔플은 인라인 animation 이라 클래스만으로는 못 끈다 */
+          /* !important: 추첨 카드의 이동·플립은 인라인 animation 이라 클래스만으로는 못 끈다 */
           .live-pulse, .card-reveal, .champion-rise,
           .chip-outer, .chip-inner, .draw-outer, .draw-name,
           .vs-backdrop, .vs-glow, .vs-beam { animation: none !important; }
+          /* 도입 팀명은 확정 팀명과 같은 자리라 모션 없이 두면 겹쳐 보인다 — 숨김 */
+          .draw-gname { display: none !important; }
           /* 우승 무대 — 원본의 축소 규칙 그대로: 흔들림·플래시·충격파·포일·그레인만 끄고,
              페이드 계열(블룸·빔·레터 드롭·와이프)은 유지. 카드는 페이드 등장으로 대체 */
           .champ-shake, .champ-wave, .champ-flash, .champ-scan, .champ-foil, .champ-grain { animation: none !important; }
