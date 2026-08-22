@@ -501,6 +501,32 @@ test('결선 순서: 승자가 B 여도 같은 규칙', () => {
   assert.deepEqual(finalRevealOrder(['B', 'A', 'B', 'B', 'A'], 'B'), ['A', 'B', 'A', 'B', 'B']);
 });
 
+test('결선 순서: {표, 명의} 쌍도 쌍이 깨지지 않고 같은 규칙으로 재배열된다 (8/22 저녁 명의 표기)', () => {
+  const pairs = [
+    { w: 'A' as const, name: '김' },
+    { w: 'A' as const, name: '이' },
+    { w: 'B' as const, name: '박' },
+    { w: 'A' as const, name: '최' },
+    { w: 'B' as const, name: '정' },
+  ];
+  assert.deepEqual(
+    finalRevealOrder(pairs, 'A', (p) => p.w),
+    [
+      { w: 'B', name: '박' },
+      { w: 'A', name: '김' },
+      { w: 'B', name: '정' },
+      { w: 'A', name: '이' },
+      { w: 'A', name: '최' },
+    ],
+  );
+});
+
+test('공개: voteNames 가 votes 와 같은 순서로 저장된다 (정지 화면 명의 표기)', () => {
+  const s = revealResult(startMatch(seeded(), 'R1-1'), 'R1-1', 'A', ['A', 'B', 'A'], ['김', '박', '이']);
+  assert.deepEqual(getMatch(s, 'R1-1').votes, ['A', 'B', 'A']);
+  assert.deepEqual(getMatch(s, 'R1-1').voteNames, ['김', '박', '이']);
+});
+
 // ------------------------------------------------------------
 // 수동 대진 (8/22) — drawRound2 pairs
 // ------------------------------------------------------------

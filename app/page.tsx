@@ -426,14 +426,23 @@ function FocusLive({ state, match }: { state: PublicState; match: Match }) {
 }
 
 /**
- * 표 오픈 정지 화면 (8/22 개편, §6.1 2단계 공개의 1단계) — 카드만 있는 페이지.
- * 뒷면 칩이 한 장씩 뒤집히고, 전부 열린 뒤에도 **머문다** — 심사위원 코멘트 시간.
- * 다음 단계(결과 화면)는 운영자의 [발표] 액션이 연다. 타이틀·집계·팀 히어로 없음
- * (운영자 지시: 카드 5장만). 승부는 카드 색(테두리 진영색)이 이미 말해준다.
+ * 표 오픈 정지 화면 (8/22 개편, §6.1 2단계 공개의 1단계) — 뒷면 칩이 한 장씩
+ * 뒤집히고, 전부 열린 뒤에도 **머문다** — 심사위원 코멘트 시간.
+ * 다음 단계(결과 화면)는 운영자의 [발표] 액션이 연다.
+ *
+ * 구성은 종전 공개 시퀀스의 것을 되살렸다 (8/22 저녁 "카드만" 지시 → 같은 날
+ * "화면 꽉 채우고 멘트 지우지 마" 재지시): 멘트 + 팀 히어로 + 실시간 집계 + 카드.
+ * 카드 밑에는 심사위원 이름 (운영자 지시 — §3 명의 비공개 번복, 플립과 함께 등장).
+ * 승자 강조(디밍·진출 확정)는 여기 없다 — 그건 [발표]가 여는 결과 화면의 몫이다.
  */
 function FreezeReveal({ state, match }: { state: PublicState; match: Match }) {
   const votes = match.votes ?? [];
+  const names = match.voteNames ?? [];
   const chipCharacter = (side: 'A' | 'B') => teamAt(state, side === 'A' ? match.a : match.b)?.character ?? null;
+
+  // 오픈된 칩 수 — 집계·이름 표기가 따라간다. 시계는 chipFlip 의 animationend 하나
+  // (JS 타이머로 CSS 타이밍을 수치 복제하면 두 시계가 되어 어긋난 전례 — PR #24)
+  const [opened, setOpened] = useState(0);
 
   // 도입 소리 — 덱 부채꼴. reduced-motion 은 칩 등장 모션이 없으니 생략
   useEffect(() => {
@@ -442,47 +451,89 @@ function FreezeReveal({ state, match }: { state: PublicState; match: Match }) {
     return () => clearTimeout(timer);
   }, []);
 
+  // 모션 축소 환경은 칩이 즉시 다 보이고 animationend 도 오지 않는다 — 집계도 즉시 전체
+  useEffect(() => {
+    if (votes.length === 0 || !window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const timer = setTimeout(() => setOpened(votes.length), 0);
+    return () => clearTimeout(timer);
+  }, [votes.length]);
+
+  const openTally = (side: 'A' | 'B') => votes.slice(0, opened).filter((v) => v === side).length;
+
   return (
-    <div className="flex flex-1 items-center justify-center py-6">
-      <div className="flex flex-wrap items-center justify-center gap-5 lg:gap-7 2xl:gap-9">
+    <div className="flex flex-1 flex-col items-center justify-center gap-7 py-6 lg:gap-9 2xl:gap-11">
+      <p className="champion-rise text-2xl font-extrabold tracking-tight lg:text-4xl 2xl:text-5xl">
+        투표를 공개합니다
+      </p>
+
+      <div className="grid w-full max-w-6xl grid-cols-1 items-center gap-8 lg:grid-cols-[1fr_auto_1fr] lg:gap-12">
+        {/* 히어로는 디밍 없이 — 승부 강조는 [발표] 후 결과 화면에서 */}
+        <TeamHero state={state} index={match.a} compact />
+        <div className="flex flex-col items-center gap-2">
+          <span className="font-display text-2xl text-(--orange) lg:text-4xl 2xl:text-5xl">
+            {match.round === 3 ? 'FINAL' : `ROUND ${match.round}-${match.id.split('-')[1]}`}
+          </span>
+          {/* 집계는 열린 칩만 센다 — 화면의 칩과 숫자가 같은 시계로 움직인다 */}
+          <div className="font-en flex items-center gap-5 text-5xl font-extrabold tabular-nums lg:text-6xl 2xl:text-7xl">
+            <span style={{ color: SIDE_COLORS.A }}>{openTally('A')}</span>
+            <span className="text-2xl text-white/25">:</span>
+            <span style={{ color: SIDE_COLORS.B }}>{openTally('B')}</span>
+          </div>
+        </div>
+        <TeamHero state={state} index={match.b} compact />
+      </div>
+
+      <div className="flex flex-wrap items-start justify-center gap-5 lg:gap-7 2xl:gap-8">
         {/* 실물 카드 문법 (8/20): 뒷면(card-back-Q)이 깔리고 한 장씩 앞면으로.
             앞면은 표받은 팀의 캐릭터 카드 — 테두리 진영색이 곧 개표 현황이다.
-            플립 시작 = 효과음 (animationstart, 단일 시계 원칙) */}
+            플립 시작 = 효과음, 플립 종료 = 집계·이름 오픈 (단일 시계 원칙) */}
         {votes.map((side, i) => (
-          <div
-            key={i}
-            className="chip-outer relative aspect-2/3 w-32 lg:w-44 2xl:w-52"
-            style={{ animationDelay: `${i * 0.06}s` }}
-          >
+          <div key={i} className="flex flex-col items-center gap-2.5">
             <div
-              className="chip-inner relative h-full w-full"
-              onAnimationStart={(e) => e.animationName === 'chipFlip' && playFlip()}
-              style={{ animationDelay: `${(i * CHIP_INTERVAL_MS) / 1000}s` }}
+              className="chip-outer relative aspect-2/3 w-24 lg:w-32 2xl:w-40"
+              style={{ animationDelay: `${i * 0.06}s` }}
             >
-              {/* 테두리는 카드 곡률에 밀착 — 바깥 radius = 곡률 + 테두리 (ui.tsx) */}
               <div
-                className="chip-face absolute inset-0 overflow-hidden border-2 bg-white/5"
-                style={{
-                  borderRadius: cardRadiusWithBorder(2),
-                  borderColor: SIDE_COLORS[side],
-                  boxShadow: `0 0 26px color-mix(in srgb, ${SIDE_COLORS[side]} 40%, transparent)`,
-                }}
+                className="chip-inner relative h-full w-full"
+                onAnimationStart={(e) => e.animationName === 'chipFlip' && playFlip()}
+                onAnimationEnd={(e) => e.animationName === 'chipFlip' && setOpened((n) => Math.max(n, i + 1))}
+                style={{ animationDelay: `${(i * CHIP_INTERVAL_MS) / 1000}s` }}
               >
-                {chipCharacter(side) ? (
-                  <Image src={`/characters/${chipCharacter(side)}.png`} alt="" fill sizes="208px" className="object-cover" />
-                ) : (
-                  <span className="grid h-full w-full place-items-center text-3xl font-extrabold" style={{ color: SIDE_COLORS[side] }}>
-                    {side}
-                  </span>
-                )}
-              </div>
-              <div
-                className="chip-face chip-back absolute inset-0 overflow-hidden border border-white/15 bg-white/5"
-                style={{ borderRadius: cardRadiusWithBorder(1) }}
-              >
-                <Image src="/card-back-Q-ver2.png" alt="" fill sizes="208px" className="object-cover" />
+                {/* 테두리는 카드 곡률에 밀착 — 바깥 radius = 곡률 + 테두리 (ui.tsx) */}
+                <div
+                  className="chip-face absolute inset-0 overflow-hidden border-2 bg-white/5"
+                  style={{
+                    borderRadius: cardRadiusWithBorder(2),
+                    borderColor: SIDE_COLORS[side],
+                    boxShadow: `0 0 26px color-mix(in srgb, ${SIDE_COLORS[side]} 40%, transparent)`,
+                  }}
+                >
+                  {chipCharacter(side) ? (
+                    <Image src={`/characters/${chipCharacter(side)}.png`} alt="" fill sizes="160px" className="object-cover" />
+                  ) : (
+                    <span className="grid h-full w-full place-items-center text-3xl font-extrabold" style={{ color: SIDE_COLORS[side] }}>
+                      {side}
+                    </span>
+                  )}
+                </div>
+                <div
+                  className="chip-face chip-back absolute inset-0 overflow-hidden border border-white/15 bg-white/5"
+                  style={{ borderRadius: cardRadiusWithBorder(1) }}
+                >
+                  <Image src="/card-back-Q-ver2.png" alt="" fill sizes="160px" className="object-cover" />
+                </div>
               </div>
             </div>
+            {/* 심사위원 명의 — 카드가 뒤집힌 뒤에만 (뒷면 상태에서 이름이 먼저 보이면
+                다음 표를 예고하는 꼴). 이름 없는 표(도입 전 데이터)는 자리만 유지 */}
+            <span
+              className={`max-w-24 truncate text-center text-sm font-bold transition-opacity duration-500 lg:max-w-32 lg:text-base 2xl:max-w-40 2xl:text-lg ${
+                i < opened && names[i] ? 'opacity-100' : 'opacity-0'
+              }`}
+              style={{ color: SIDE_COLORS[side] }}
+            >
+              {names[i] ?? ' '}
+            </span>
           </div>
         ))}
       </div>
@@ -496,19 +547,39 @@ const RESULT_SCENE_MS = 6000;
 /**
  * 결과 화면 (2단계 공개의 2단계) — 운영자의 [발표]에 맞춰 승자를 크게.
  * 코멘트가 끝난 뒤의 공식 발표 순간이라 클래터 + 플링이 여기서 난다.
+ * 구성은 종전 시퀀스의 발표 단계를 되살렸다 (8/22 저녁 "화면 꽉 채워라"):
+ * 멘트 + 라운드 표기 + 최종 집계 + 승자 강조 히어로. 히어로가 compact 가 아닌
+ * 이유: 이 화면엔 카드 줄이 없어 세로가 남는다 — 히어로가 그 몫을 가져간다.
  */
 function ResultScene({ state, match }: { state: PublicState; match: Match }) {
+  const votes = match.votes ?? [];
+  const tally = (side: 'A' | 'B') => votes.filter((v) => v === side).length;
+
   useEffect(() => {
     const timer = setTimeout(() => playChips(), 150);
     return () => clearTimeout(timer);
   }, []);
 
   return (
-    <div className="flex flex-1 items-center justify-center py-6">
+    <div className="flex flex-1 flex-col items-center justify-center gap-8 py-6 lg:gap-10">
+      <p className="champion-rise text-2xl font-extrabold tracking-tight lg:text-4xl 2xl:text-5xl">
+        결과를 발표합니다
+      </p>
       <div className="grid w-full max-w-6xl grid-cols-1 items-center gap-8 lg:grid-cols-[1fr_auto_1fr] lg:gap-12">
-        <TeamHero state={state} index={match.a} compact dimmed={match.winner !== 'A'} winner={match.winner === 'A'} />
-        <div aria-hidden />
-        <TeamHero state={state} index={match.b} compact dimmed={match.winner !== 'B'} winner={match.winner === 'B'} />
+        <TeamHero state={state} index={match.a} dimmed={match.winner !== 'A'} winner={match.winner === 'A'} />
+        <div className="flex flex-col items-center gap-2">
+          <span className="font-display text-2xl text-(--orange) lg:text-4xl 2xl:text-5xl">
+            {match.round === 3 ? 'FINAL' : `ROUND ${match.round}-${match.id.split('-')[1]}`}
+          </span>
+          {votes.length > 0 && (
+            <div className="font-en flex items-center gap-5 text-5xl font-extrabold tabular-nums lg:text-6xl 2xl:text-7xl">
+              <span style={{ color: SIDE_COLORS.A }}>{tally('A')}</span>
+              <span className="text-2xl text-white/25">:</span>
+              <span style={{ color: SIDE_COLORS.B }}>{tally('B')}</span>
+            </div>
+          )}
+        </div>
+        <TeamHero state={state} index={match.b} dimmed={match.winner !== 'B'} winner={match.winner === 'B'} />
       </div>
     </div>
   );

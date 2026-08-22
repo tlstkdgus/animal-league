@@ -41,11 +41,16 @@ export type Match = {
   status: MatchStatus;
   winner: Side | null;
   /**
-   * 결과 공개 시점의 익명 표 (스크린 투표 오픈 연출용, §6.1).
-   * 명의는 싣지 않고 서버가 순서를 섞어(결선은 연출 정렬, §6.1 8/22) 저장한다
-   * — §3 표 비공개 원칙 유지. 공개 전(ready/live)에는 null.
+   * 결과 공개 시점의 표 (스크린 투표 오픈 연출용, §6.1).
+   * 서버가 순서를 섞어(결선은 연출 정렬, §6.1 8/22) 저장한다. 공개 전(ready/live)에는 null.
    */
   votes: Side[] | null;
+  /**
+   * votes 와 같은 순서의 심사위원 이름 (§6.1 8/22 저녁 — 정지 화면 카드에 명의 표기,
+   * 운영자 결정으로 §3 "명의를 떼고 공개" 원칙 번복). 도입 전 데이터에는 없다 —
+   * 없으면 스크린은 이름 없이 카드만 그린다.
+   */
+  voteNames?: string[] | null;
   /**
    * 발표 확정 (8/22 신설, §6.1 2단계 공개): revealResult(카드 오픈·정지) 후
    * 심사위원 코멘트 시간이 지나고 운영자가 announceResult 를 눌러야 true.
@@ -340,14 +345,16 @@ export function setTimer(
  * 브래킷이 굴러가야 하는 백업 모드가 최소 보장선이다 (SPEC §5).
  * 그래서 표 집계를 판정에 쓰지 않는다. 동표 경고도 운영 화면의 몫이다 (SPEC §3).
  *
- * votes 는 스크린 투표 오픈 연출용 익명 표 — 호출측(서버)이 명의를 떼고 셔플해
- * 넘긴다. 빈 배열(백업 모드)이면 스크린은 표 연출 없이 승자만 발표한다.
+ * votes 는 스크린 투표 오픈 연출용 표 — 호출측(서버)이 셔플(결선은 연출 정렬)해 넘긴다.
+ * names 는 votes 와 같은 순서의 심사위원 이름 (§6.1 8/22 저녁 — 카드에 명의 표기).
+ * 빈 배열(백업 모드)이면 스크린은 표 연출 없이 승자만 발표한다.
  */
 export function revealResult(
   state: TournamentState,
   matchId: string,
   winner: Side,
   votes: Side[] = [],
+  names: string[] = [],
 ): TournamentState {
   const target = getMatch(state, matchId);
 
@@ -359,7 +366,10 @@ export function revealResult(
   }
 
   // 공개와 함께 타이머 해제 — 심사 시간이 끝난 화면에 시계가 남아 있으면 안 된다
-  return { ...replaceMatch(state, target.id, { status: 'done', winner, votes: [...votes] }), timer: null };
+  return {
+    ...replaceMatch(state, target.id, { status: 'done', winner, votes: [...votes], voteNames: [...names] }),
+    timer: null,
+  };
 }
 
 /**
@@ -388,24 +398,29 @@ export function isAnnounced(match: Match): boolean {
  * 결선 표 공개 순서 (8/22, §6.1) — 셔플 대신 연출 정렬. 규칙:
  * 패자 표가 남아 있는 동안 [패자, 승자] 로 번갈아 깔고, 남은 승자 표를 뒤에 붙인다.
  * 3:2 → 패승패승승 (마지막 장이 승부 확정), 4:1/5:0 → 표 적은 쪽 먼저.
- * 명의·제출 순서와 무관한 재배열이라 §3 비공개 원칙은 그대로 유지된다.
+ * 제네릭인 이유(8/22 저녁): 정지 화면에 명의가 실리면서 진영 배열만이 아니라
+ * {표, 이름} 쌍 자체를 같은 규칙으로 재배열해야 한다 — 진영은 mark 로 읽는다.
+ * 기본 mark 는 원소 그 자체 (Side[] 를 그대로 받던 종전 호출과 호환).
  */
-export function finalRevealOrder(votes: readonly Side[], winner: Side): Side[] {
-  const loser: Side = winner === 'A' ? 'B' : 'A';
-  let w = votes.filter((v) => v === winner).length;
-  let l = votes.length - w;
-  const out: Side[] = [];
-  while (l > 0) {
-    out.push(loser);
-    l -= 1;
-    if (w > 0) {
-      out.push(winner);
-      w -= 1;
+export function finalRevealOrder<T>(
+  votes: readonly T[],
+  winner: Side,
+  mark: (v: T) => Side = (v) => v as unknown as Side,
+): T[] {
+  const losers = votes.filter((v) => mark(v) !== winner);
+  const winners = votes.filter((v) => mark(v) === winner);
+  const out: T[] = [];
+  let w = 0;
+  for (let l = 0; l < losers.length; l += 1) {
+    out.push(losers[l]);
+    if (w < winners.length) {
+      out.push(winners[w]);
+      w += 1;
     }
   }
-  while (w > 0) {
-    out.push(winner);
-    w -= 1;
+  while (w < winners.length) {
+    out.push(winners[w]);
+    w += 1;
   }
   return out;
 }
