@@ -444,10 +444,10 @@ function FocusLive({ state, match }: { state: PublicState; match: Match }) {
  * 뒤집히고, 전부 열린 뒤에도 **머문다** — 심사위원 코멘트 시간.
  * 다음 단계(결과 화면)는 운영자의 [발표] 액션이 연다.
  *
- * 구성은 종전 공개 시퀀스의 것을 되살렸다 (8/22 저녁 "카드만" 지시 → 같은 날
- * "화면 꽉 채우고 멘트 지우지 마" 재지시): 멘트 + 팀 히어로 + 실시간 집계 + 카드.
- * 카드 밑에는 심사위원 이름 (운영자 지시 — §3 명의 비공개 번복, 플립과 함께 등장).
- * 승자 강조(디밍·진출 확정)는 여기 없다 — 그건 [발표]가 여는 결과 화면의 몫이다.
+ * 구성 (8/22 심야 확정 — "이거 두 개만 남겨서 화면 꽉꽉"): **라운드+집계**와
+ * **표 카드(심사위원 이름)** 둘뿐이다. 멘트·팀 히어로는 같은 날 저녁에 넣었다가
+ * 원거리 가독을 위해 다시 뺐다 — 큰 행사장 뒷줄까지 읽혀야 해서 남은 두 요소를
+ * 최대 크기로 키운다. 승자 강조는 여전히 [발표]가 여는 결과 화면의 몫.
  */
 function FreezeReveal({ state, match }: { state: PublicState; match: Match }) {
   const votes = match.votes ?? [];
@@ -475,36 +475,28 @@ function FreezeReveal({ state, match }: { state: PublicState; match: Match }) {
   const openTally = (side: 'A' | 'B') => votes.slice(0, opened).filter((v) => v === side).length;
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-7 py-6 lg:gap-9 2xl:gap-11">
-      <p className="champion-rise text-2xl font-extrabold tracking-tight lg:text-4xl 2xl:text-5xl">
-        투표를 공개합니다
-      </p>
-
-      <div className="grid w-full max-w-6xl grid-cols-1 items-center gap-8 lg:grid-cols-[1fr_auto_1fr] lg:gap-12">
-        {/* 히어로는 디밍 없이 — 승부 강조는 [발표] 후 결과 화면에서 */}
-        <TeamHero state={state} index={match.a} compact />
-        <div className="flex flex-col items-center gap-2">
-          <span className="font-display text-2xl text-(--orange) lg:text-4xl 2xl:text-5xl">
-            {match.round === 3 ? 'FINAL' : `ROUND ${match.round}-${match.id.split('-')[1]}`}
-          </span>
-          {/* 집계는 열린 칩만 센다 — 화면의 칩과 숫자가 같은 시계로 움직인다 */}
-          <div className="font-en flex items-center gap-5 text-5xl font-extrabold tabular-nums lg:text-6xl 2xl:text-7xl">
-            <span style={{ color: SIDE_COLORS.A }}>{openTally('A')}</span>
-            <span className="text-2xl text-white/25">:</span>
-            <span style={{ color: SIDE_COLORS.B }}>{openTally('B')}</span>
-          </div>
+    <div className="flex flex-1 flex-col items-center justify-center gap-8 py-6 lg:gap-10 2xl:gap-12">
+      {/* 라운드 + 집계 — 뒷줄 가독이 목표라 화면 요소 중 최대 크기 */}
+      <div className="flex flex-col items-center gap-1">
+        <span className="font-display text-4xl text-(--orange) lg:text-5xl 2xl:text-6xl">
+          {match.round === 3 ? 'FINAL' : `ROUND ${match.round}-${match.id.split('-')[1]}`}
+        </span>
+        {/* 집계는 열린 칩만 센다 — 화면의 칩과 숫자가 같은 시계로 움직인다 */}
+        <div className="font-en flex items-center gap-7 text-7xl font-extrabold tabular-nums lg:text-8xl 2xl:text-9xl">
+          <span style={{ color: SIDE_COLORS.A }}>{openTally('A')}</span>
+          <span className="text-4xl text-white/25">:</span>
+          <span style={{ color: SIDE_COLORS.B }}>{openTally('B')}</span>
         </div>
-        <TeamHero state={state} index={match.b} compact />
       </div>
 
-      <div className="flex flex-wrap items-start justify-center gap-5 lg:gap-7 2xl:gap-8">
+      <div className="flex flex-wrap items-start justify-center gap-6 lg:gap-7 2xl:gap-8">
         {/* 실물 카드 문법 (8/20): 뒷면(card-back-Q)이 깔리고 한 장씩 앞면으로.
             앞면은 표받은 팀의 캐릭터 카드 — 테두리 진영색이 곧 개표 현황이다.
             플립 시작 = 효과음, 플립 종료 = 집계·이름 오픈 (단일 시계 원칙) */}
         {votes.map((side, i) => (
-          <div key={i} className="flex flex-col items-center gap-2.5">
+          <div key={i} className="flex flex-col items-center gap-3">
             <div
-              className="chip-outer relative aspect-2/3 w-24 lg:w-32 2xl:w-40"
+              className="chip-outer relative aspect-2/3 w-40 lg:w-56 2xl:w-84"
               style={{ animationDelay: `${i * 0.06}s` }}
             >
               <div
@@ -519,11 +511,11 @@ function FreezeReveal({ state, match }: { state: PublicState; match: Match }) {
                   style={{
                     borderRadius: cardRadiusWithBorder(2),
                     borderColor: SIDE_COLORS[side],
-                    boxShadow: `0 0 26px color-mix(in srgb, ${SIDE_COLORS[side]} 40%, transparent)`,
+                    boxShadow: `0 0 34px color-mix(in srgb, ${SIDE_COLORS[side]} 45%, transparent)`,
                   }}
                 >
                   {chipCharacter(side) ? (
-                    <Image src={`/characters/${chipCharacter(side)}.png`} alt="" fill sizes="160px" className="object-cover" />
+                    <Image src={`/characters/${chipCharacter(side)}.png`} alt="" fill sizes="336px" className="object-cover" />
                   ) : (
                     <span className="grid h-full w-full place-items-center text-3xl font-extrabold" style={{ color: SIDE_COLORS[side] }}>
                       {side}
@@ -534,14 +526,14 @@ function FreezeReveal({ state, match }: { state: PublicState; match: Match }) {
                   className="chip-face chip-back absolute inset-0 overflow-hidden border border-white/15 bg-white/5"
                   style={{ borderRadius: cardRadiusWithBorder(1) }}
                 >
-                  <Image src="/card-back-Q-ver2.png" alt="" fill sizes="160px" className="object-cover" />
+                  <Image src="/card-back-Q-ver2.png" alt="" fill sizes="336px" className="object-cover" />
                 </div>
               </div>
             </div>
             {/* 심사위원 명의 — 카드가 뒤집힌 뒤에만 (뒷면 상태에서 이름이 먼저 보이면
                 다음 표를 예고하는 꼴). 이름 없는 표(도입 전 데이터)는 자리만 유지 */}
             <span
-              className={`max-w-24 truncate text-center text-sm font-bold transition-opacity duration-500 lg:max-w-32 lg:text-base 2xl:max-w-40 2xl:text-lg ${
+              className={`max-w-40 truncate text-center text-xl font-extrabold transition-opacity duration-500 lg:max-w-56 lg:text-2xl 2xl:max-w-84 2xl:text-3xl ${
                 i < opened && names[i] ? 'opacity-100' : 'opacity-0'
               }`}
               style={{ color: SIDE_COLORS[side] }}
