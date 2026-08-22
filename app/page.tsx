@@ -14,7 +14,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { CARD_RADIUS, CharacterArt, SchoolTag, TRACK_COLORS, TrackBadge, Wordmark } from '@/components/ui';
+import { CARD_RADIUS, CharacterArt, SchoolTag, TRACK_COLORS, Wordmark } from '@/components/ui';
 import { armSfx, playChips, playFan, playFlip, playImpact, playShuffle } from '@/lib/sfx';
 import universityLogos from '@/lib/universityLogos';
 import { winningTeamId, type Match, type Team } from '@/lib/tournament';
@@ -203,17 +203,10 @@ function TeamSolo({
       <div className="mt-2 line-clamp-2 text-[13px] font-extrabold leading-tight tracking-tight 2xl:text-sm">
         {teamName(state, index)}
       </div>
-      {/* 학교명(줄바꿈 허용)과 트랙 배지를 줄로 분리 — 한 줄에 섞으면 좁은 카드에서
-          폭 경쟁으로 글자가 세로로 쪼개진다. min-h 는 교명 2줄 + 배지 분량 고정
-          (1줄/2줄 차이로 카드 높이가 들쭉하지 않게) */}
-      <div className="mt-1 min-h-12 2xl:min-h-14">
+      {/* 학교명은 한 줄 + 말줄임 (8/22 확정 — 2줄 시도는 카드 높이가 이상해져 번복) */}
+      <div className="mt-1 flex justify-center">
         {team && index !== null ? (
-          <>
-            <SchoolTag school={team.school || '학교 미입력'} size="sm" wrap />
-            <div className="mt-0.5 flex justify-center">
-              <TrackBadge track={team.track} />
-            </div>
-          </>
+          <SchoolTag school={team.school || '학교 미입력'} track={team.track} size="sm" />
         ) : null}
       </div>
     </div>
@@ -957,10 +950,9 @@ export default function ViewerPage() {
         .font-display { font-family: var(--font-anton), var(--font-suit), sans-serif; }
         /* 무대 확대 (8/22) — 프로젝터(≥1880px)에서 피라미드 전체를 zoom 배.
            zoom 은 레이아웃 크기가 함께 커져 연결선↔준결승 정합이 그대로 유지된다.
-           1.18 → 1.06 하향 (8/22 학교명 가독성 패스): R1 카드가 교명 2줄 + 트랙
-           줄로 세로가 커져 1.18 은 1080 세로를 102px 넘쳤다. 큰 글자는 이제
-           타이포 확대가 담당하고 zoom 은 마무리만 — 세로 실측 1063/1080 */
-        @media (min-width: 1880px) { .pyramid-zoom { zoom: 1.06; } }
+           값 이력: 1.18 → 1.06(교명 2줄로 세로 초과) → 1.11(말줄임 복귀로 회복, 실측 상한).
+           바꿀 땐 1920×1080 에서 scrollHeight ≤ 1080 실측으로 확인할 것 */
+        @media (min-width: 1880px) { .pyramid-zoom { zoom: 1.11; } }
         .live-pulse { animation: livePulse 1.2s ease-in-out infinite; }
         @keyframes livePulse { 50% { opacity: 0.45; } }
         .card-live { box-shadow: 0 0 28px rgba(255,59,48,0.22); }
