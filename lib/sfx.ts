@@ -12,12 +12,16 @@ const FLIP_SOURCES = [1, 2, 3, 4].map((n) => `/sfx/card-place-${n}.ogg`);
 const SHUFFLE_SOURCE = '/sfx/card-shuffle.ogg';
 const FAN_SOURCE = '/sfx/card-fan-1.ogg';
 const CHIPS_SOURCES = [1, 2].map((n) => `/sfx/chips-collide-${n}.ogg`);
+const HIT_SOURCE = '/sfx/hit-orchestra.ogg'; // Kenney jingles_HIT15 — 시네마틱 오케스트라 히트
+const FANFARE_SOURCE = '/sfx/fanfare.mp3'; // Hyper Ultra Fanfare (CC0, 6.2초)
 
 let ctx: AudioContext | null = null;
 let flipBuffers: AudioBuffer[] | null = null;
 let shuffleBuffer: AudioBuffer | null = null;
 let fanBuffer: AudioBuffer | null = null;
 let chipsBuffers: AudioBuffer[] | null = null;
+let hitBuffer: AudioBuffer | null = null;
+let fanfareBuffer: AudioBuffer | null = null;
 let loadStarted = false;
 let flipIdx = 0;
 
@@ -39,17 +43,21 @@ async function load(c: AudioContext): Promise<void> {
     return c.decodeAudioData(await res.arrayBuffer());
   };
   try {
-    [flipBuffers, shuffleBuffer, fanBuffer, chipsBuffers] = await Promise.all([
+    [flipBuffers, shuffleBuffer, fanBuffer, chipsBuffers, hitBuffer, fanfareBuffer] = await Promise.all([
       Promise.all(FLIP_SOURCES.map(decode)),
       decode(SHUFFLE_SOURCE),
       decode(FAN_SOURCE),
       Promise.all(CHIPS_SOURCES.map(decode)),
+      decode(HIT_SOURCE),
+      decode(FANFARE_SOURCE),
     ]);
   } catch {
     flipBuffers = null;
     shuffleBuffer = null;
     fanBuffer = null;
     chipsBuffers = null;
+    hitBuffer = null;
+    fanfareBuffer = null;
     loadStarted = false; // 폴링 화면이라 다음 armSfx/재생 경로에서 재시도할 여지를 남긴다
   }
 }
@@ -188,9 +196,59 @@ export function playImpact(volume = 1): void {
   }
 }
 
-/** 대결 포커스(VS) 등장 — 임팩트 붐의 약한 버전 (8/22 운영자 요청). */
+/**
+ * 대결 포커스(VS) 등장 — 오케스트라 히트 샘플 + 서브 드롭.
+ * 합성 붐 단독에서 교체 (8/22 "찾아서 넣자"): 어택은 실제 오케스트라 히트가,
+ * 무게감은 저역 사인 드롭이 담당한다. 샘플이 아직 로드 전이면 합성 붐 폴백.
+ */
 export function playVersus(): void {
-  playImpact(0.75);
+  const c = context();
+  if (!c || c.state !== 'running') return;
+  if (!hitBuffer) {
+    playImpact(0.75);
+    return;
+  }
+  try {
+    const t = c.currentTime;
+    const src = c.createBufferSource();
+    src.buffer = hitBuffer;
+    const gain = c.createGain();
+    gain.gain.value = 0.8;
+    src.connect(gain).connect(c.destination);
+    src.start(t);
+    // 저역 보강 — 히트 아래 깔리는 서브 드롭
+    const osc = c.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(90, t);
+    osc.frequency.exponentialRampToValueAtTime(40, t + 0.35);
+    const oscGain = c.createGain();
+    oscGain.gain.setValueAtTime(0.4, t);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+    osc.connect(oscGain).connect(c.destination);
+    osc.start(t);
+    osc.stop(t + 0.55);
+  } catch {
+    /* 소리 실패가 화면을 막으면 안 된다 */
+  }
+}
+
+/**
+ * 우승 팡파레 — 큐시트의 "팡파레 BGM" 을 화면이 담당한다 (8/22 확인: 음향 콘솔
+ * 목록에 없음). 우승 무대의 CHAMPION 레터 드롭(1.04초)에 맞춰 재생.
+ */
+export function playFanfare(): void {
+  const c = context();
+  if (!c || !fanfareBuffer || c.state !== 'running') return;
+  try {
+    const src = c.createBufferSource();
+    src.buffer = fanfareBuffer;
+    const gain = c.createGain();
+    gain.gain.value = 0.9;
+    src.connect(gain).connect(c.destination);
+    src.start();
+  } catch {
+    /* 소리 실패가 화면을 막으면 안 된다 */
+  }
 }
 
 /** 카드 플립 1회 — 4개 샘플 라운드로빈 (같은 소리 연발로 기계적으로 들리는 것 방지). */
