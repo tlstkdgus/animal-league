@@ -218,15 +218,7 @@ function TeamSolo({
  * 추첨이 끝나면 승자 슬롯에 "→ R2-N" 진출 배지 — R2 는 랜덤이라 이 열에서
  * 준결승으로 선을 긋지 않는다 (긋는 순간 사이드 고정 진출로 읽힌다).
  */
-function PairColumn({
-  state,
-  match,
-  revealingId,
-}: {
-  state: PublicState;
-  match: Match;
-  revealingId: string | null;
-}) {
+function PairColumn({ state, match }: { state: PublicState; match: Match }) {
   const live = match.status === 'live';
   const done = match.status === 'done';
   const winnerIdx = winningTeamId(match);
@@ -236,7 +228,10 @@ function PairColumn({
       : undefined;
 
   return (
-    <div className={`flex flex-col items-center ${revealingId === match.id ? 'card-reveal' : ''}`}>
+    // 잔광(card-reveal)은 이 열에 걸지 않는다 (2026-08-22 피드백: 슬롯·스텁·카드를
+    // 감싼 바운딩 박스가 통째로 빛나 이상하게 보임). 결승·준결승 단일 카드에만 유지 —
+    // R1 은 승자 하이라이트 + 승자 슬롯 채움이 결과를 이미 말해준다
+    <div className="flex flex-col items-center">
       <div
         className={`w-44 rounded-lg py-1.5 text-center text-xs font-bold 2xl:w-48 ${
           done ? 'border border-(--orange)/45' : 'border border-dashed border-white/20 text-white/40'
@@ -261,10 +256,11 @@ function PairColumn({
         style={{ borderLeft: `2px ${done ? 'solid rgba(236,108,1,0.55)' : 'dashed rgba(255,255,255,0.16)'}` }}
         aria-hidden
       />
-      <div
-        className={`viewer-card relative flex items-center gap-2 rounded-2xl border p-2 2xl:gap-2.5 ${live ? 'card-live' : ''}`}
-        style={{ borderColor: live ? 'var(--live)' : 'rgba(255,255,255,0.07)' }}
-      >
+      {/* 쌍을 감싸던 테두리 박스 제거 (2026-08-22 피드백) — 개별 카드가 자체
+          테두리·승자 하이라이트를 갖고 있어 박스 없이도 대진이 읽힌다.
+          live 강조는 대결 포커스 화면이 대신하므로 (live 면 브래킷 자체가 안 보임)
+          박스의 live 테두리도 함께 정리 — LIVE 배지만 남긴다 */}
+      <div className="relative flex items-center gap-2.5 2xl:gap-3">
         {live && (
           <span className="live-pulse absolute -top-2.5 left-1/2 -translate-x-1/2 rounded bg-(--live) px-1.5 py-0.5 text-[10px] font-extrabold text-white">
             LIVE
@@ -1346,7 +1342,7 @@ export default function ViewerPage() {
             (half, i) => (
               <div key={i} className="mt-7 flex gap-7 2xl:mt-9 2xl:gap-10">
                 {half.map((m) => (
-                  <PairColumn key={m.id} state={state} match={m} revealingId={revealingId} />
+                  <PairColumn key={m.id} state={state} match={m} />
                 ))}
               </div>
             ),
