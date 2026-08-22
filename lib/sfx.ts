@@ -112,7 +112,11 @@ export function playFan(): void {
   }
 }
 
-/** 승자 발표 — 칩 무더기 클래터. 두 샘플을 70ms 겹쳐 한 번의 두툼한 소리로 만든다. */
+/**
+ * 승자 발표 — 칩 무더기 클래터(두 샘플 70ms 레이어) + 상승 플링 2음.
+ * 8/22 운영자 피드백("이겼을 때 소리 있어야")으로 클래터만으로는 약해서
+ * 승리 문법(상승 음정)을 합성으로 얹었다 — 별도 팡파레 샘플 없이.
+ */
 export function playChips(): void {
   const c = context();
   if (!c || !chipsBuffers || c.state !== 'running') return;
@@ -121,9 +125,22 @@ export function playChips(): void {
       const src = c.createBufferSource();
       src.buffer = buf;
       const gain = c.createGain();
-      gain.gain.value = 0.55;
+      gain.gain.value = 0.65;
       src.connect(gain).connect(c.destination);
       src.start(c.currentTime + i * 0.07);
+    });
+    // 상승 플링 — E5 → B5, 사인 2음. 짧고 밝게 (0.35초 감쇠)
+    [659.25, 987.77].forEach((freq, i) => {
+      const t = c.currentTime + 0.05 + i * 0.11;
+      const osc = c.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const gain = c.createGain();
+      gain.gain.setValueAtTime(0.22, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+      osc.connect(gain).connect(c.destination);
+      osc.start(t);
+      osc.stop(t + 0.4);
     });
   } catch {
     /* 소리 실패가 화면을 막으면 안 된다 */
@@ -131,10 +148,12 @@ export function playChips(): void {
 }
 
 /**
- * 우승 카드 슬램 임팩트 — 샘플 없이 합성 (서브 사인 드롭 + 로우패스 노이즈 버스트).
+ * 임팩트 붐 — 샘플 없이 합성 (서브 사인 드롭 + 로우패스 노이즈 버스트).
  * 카지노 팩에는 무대 임팩트급 소리가 없어서, 에셋 추가 대신 합성으로 해결했다.
+ * volume: 우승 슬램 1.0, 대결 포커스(VS) 등장은 0.75 — 같은 소리의 강약 관계로
+ * "경기 시작 < 우승"의 위계를 만든다 (별도 샘플 2종보다 통일감 우선).
  */
-export function playImpact(): void {
+export function playImpact(volume = 1): void {
   const c = context();
   if (!c || c.state !== 'running') return;
   try {
@@ -145,7 +164,7 @@ export function playImpact(): void {
     osc.frequency.setValueAtTime(100, t);
     osc.frequency.exponentialRampToValueAtTime(38, t + 0.4);
     const oscGain = c.createGain();
-    oscGain.gain.setValueAtTime(0.7, t);
+    oscGain.gain.setValueAtTime(0.7 * volume, t);
     oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
     osc.connect(oscGain).connect(c.destination);
     osc.start(t);
@@ -160,13 +179,18 @@ export function playImpact(): void {
     lp.type = 'lowpass';
     lp.frequency.value = 900;
     const noiseGain = c.createGain();
-    noiseGain.gain.setValueAtTime(0.5, t);
+    noiseGain.gain.setValueAtTime(0.5 * volume, t);
     noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
     noise.connect(lp).connect(noiseGain).connect(c.destination);
     noise.start(t);
   } catch {
     /* 소리 실패가 화면을 막으면 안 된다 */
   }
+}
+
+/** 대결 포커스(VS) 등장 — 임팩트 붐의 약한 버전 (8/22 운영자 요청). */
+export function playVersus(): void {
+  playImpact(0.75);
 }
 
 /** 카드 플립 1회 — 4개 샘플 라운드로빈 (같은 소리 연발로 기계적으로 들리는 것 방지). */

@@ -107,6 +107,16 @@ export function SchoolTag({
  */
 export const CARD_RADIUS = '5.7% / 3.8%';
 
+/**
+ * 테두리 있는 카드 상자용 곡률 — 바깥 radius = 카드 곡률 + 테두리 두께.
+ * CSS 는 overflow 클리핑의 안쪽 곡선을 (바깥 radius − border 폭)으로 만들기 때문에,
+ * 이렇게 줘야 안쪽 곡선이 정확히 CARD_RADIUS 가 되어 에셋의 베이크 곡률과
+ * 갭 없이 밀착한다. 바깥 radius 에 CARD_RADIUS 를 그대로 쓰면 안쪽이
+ * (곡률 − 테두리)로 좁아져 카드 모서리와 부딪힌다 (8/22).
+ */
+export const cardRadiusWithBorder = (borderPx: number) =>
+  `calc(5.7% + ${borderPx}px) / calc(3.8% + ${borderPx}px)`;
+
 export function CharacterArt({
   characterKey,
   className,
