@@ -42,10 +42,16 @@ export type Match = {
   winner: Side | null;
   /**
    * 결과 공개 시점의 익명 표 (스크린 투표 오픈 연출용, §6.1).
-   * 명의는 싣지 않고 서버가 순서를 셔플해 저장한다 — §3 표 비공개 원칙 유지.
-   * 공개 전(ready/live)에는 null.
+   * 명의는 싣지 않고 서버가 순서를 섞어(결선은 연출 정렬, §6.1 8/22) 저장한다
+   * — §3 표 비공개 원칙 유지. 공개 전(ready/live)에는 null.
    */
   votes: Side[] | null;
+  /**
+   * 발표 확정 (8/22 신설, §6.1 2단계 공개): revealResult(카드 오픈·정지) 후
+   * 심사위원 코멘트 시간이 지나고 운영자가 announceResult 를 눌러야 true.
+   * 스크린은 이때 결과 화면 → 대진표로 넘어간다. 옵셔널: 도입 전 문서에는 없다.
+   */
+  announced?: boolean;
 };
 
 // ------------------------------------------------------------
@@ -108,6 +114,9 @@ export type TournamentErrorCode =
   | 'MATCH_NOT_FOUND'
   | 'BRACKET_UNRESOLVED'
   | 'ALREADY_DONE'
+  | 'NOT_DONE'
+  | 'ALREADY_ANNOUNCED'
+  | 'INVALID_PAIRS'
   | 'NOT_LIVE'
   | 'ROUND1_INCOMPLETE'
   | 'ROUND2_INCOMPLETE'
@@ -354,12 +363,69 @@ export function revealResult(
 }
 
 /**
+ * 발표 확정 (8/22, §6.1 2단계 공개) — 카드 오픈·정지 화면에서 코멘트를 마친 뒤
+ * 결과 화면으로 넘기는 운영자 액션. 표 0건(백업 모드) 공개는 정지 화면이 없으므로
+ * 스크린이 announced 로 간주한다 (isAnnounced 참조) — 이 액션은 표가 있을 때만 의미.
+ */
+export function announceResult(state: TournamentState, matchId: string): TournamentState {
+  const target = getMatch(state, matchId);
+  if (target.status !== 'done') {
+    throw new TournamentError('NOT_DONE', `${target.id} 은 아직 결과가 공개되지 않았습니다.`);
+  }
+  if (isAnnounced(target)) {
+    throw new TournamentError('ALREADY_ANNOUNCED', `${target.id} 은 이미 발표됐습니다.`);
+  }
+  return replaceMatch(state, target.id, { announced: true });
+}
+
+/** 발표까지 끝났는가 — 표 0건 공개(백업 모드)는 정지 화면이 없어 즉시 발표로 친다. */
+export function isAnnounced(match: Match): boolean {
+  if (match.status !== 'done') return false;
+  return match.announced === true || (match.votes?.length ?? 0) === 0;
+}
+
+/**
+ * 결선 표 공개 순서 (8/22, §6.1) — 셔플 대신 연출 정렬. 규칙:
+ * 패자 표가 남아 있는 동안 [패자, 승자] 로 번갈아 깔고, 남은 승자 표를 뒤에 붙인다.
+ * 3:2 → 패승패승승 (마지막 장이 승부 확정), 4:1/5:0 → 표 적은 쪽 먼저.
+ * 명의·제출 순서와 무관한 재배열이라 §3 비공개 원칙은 그대로 유지된다.
+ */
+export function finalRevealOrder(votes: readonly Side[], winner: Side): Side[] {
+  const loser: Side = winner === 'A' ? 'B' : 'A';
+  let w = votes.filter((v) => v === winner).length;
+  let l = votes.length - w;
+  const out: Side[] = [];
+  while (l > 0) {
+    out.push(loser);
+    l -= 1;
+    if (w > 0) {
+      out.push(winner);
+      w -= 1;
+    }
+  }
+  while (w > 0) {
+    out.push(winner);
+    w -= 1;
+  }
+  return out;
+}
+
+/**
  * 라운드 2 대진 추첨. R1 승자 4팀을 셔플해 R2 두 경기에 채운다.
  *
  * R1 승자는 트랙별로 1팀씩이므로 무작위로 짝지으면 자동으로 트랙 간 매칭이 된다
  * — 별도 제약을 걸지 않는다 (SPEC §2).
  */
-export function drawRound2(state: TournamentState, rng: Rng = Math.random): TournamentState {
+export function drawRound2(
+  state: TournamentState,
+  rng: Rng = Math.random,
+  /**
+   * 수동 대진 (8/22 운영자 결정) — 지정하면 셔플 대신 이 짝을 쓴다:
+   * [[R2-1 a, R2-1 b], [R2-2 a, R2-2 b]]. 네 값은 정확히 R1 승자 4팀이어야 한다.
+   * 스크린 연출은 어느 쪽이든 동일(셔플 애니메이션) — 무작위성의 출처만 달라진다.
+   */
+  pairs?: readonly [readonly [number, number], readonly [number, number]],
+): TournamentState {
   const pending = ROUND1_IDS.filter((id) => getMatch(state, id).status !== 'done');
   if (pending.length > 0) {
     throw new TournamentError(
@@ -371,10 +437,24 @@ export function drawRound2(state: TournamentState, rng: Rng = Math.random): Tour
     throw new TournamentError('ALREADY_DRAWN', '라운드 2 대진은 이미 추첨됐습니다.');
   }
 
-  const winners = shuffle(
-    ROUND1_IDS.map((id) => winningTeamId(getMatch(state, id)) as number),
-    rng,
-  );
+  const r1Winners = ROUND1_IDS.map((id) => winningTeamId(getMatch(state, id)) as number);
+
+  let winners: number[];
+  if (pairs) {
+    winners = [pairs[0][0], pairs[0][1], pairs[1][0], pairs[1][1]];
+    const valid =
+      winners.length === 4 &&
+      new Set(winners).size === 4 &&
+      winners.every((w) => r1Winners.includes(w));
+    if (!valid) {
+      throw new TournamentError(
+        'INVALID_PAIRS',
+        '수동 대진은 R1 승자 4팀을 정확히 한 번씩 배치해야 합니다.',
+      );
+    }
+  } else {
+    winners = shuffle(r1Winners, rng);
+  }
 
   return {
     ...state,
