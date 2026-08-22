@@ -9,10 +9,14 @@
 // 행사장 네트워크 대비 셀프호스트 (폰트와 같은 이유, layout.tsx 참조).
 
 const FLIP_SOURCES = [1, 2, 3, 4].map((n) => `/sfx/card-place-${n}.ogg`);
-const SHUFFLE_SOURCE = '/sfx/card-shuffle.ogg';
+// 카드 믹싱 (Pixabay freesound_community, 4.6초) — 운영자 직접 선곡 (8/23).
+// 종전 card-shuffle.ogg 루프를 대체 — 실제 카드 리플 소리라 루프 없이 원샷.
+const SHUFFLE_SOURCE = '/sfx/freesound_community-card-mixing-48088.mp3';
 const FAN_SOURCE = '/sfx/card-fan-1.ogg';
 const CHIPS_SOURCES = [1, 2].map((n) => `/sfx/chips-collide-${n}.ogg`);
-const HIT_SOURCE = '/sfx/hit-orchestra.ogg'; // Kenney jingles_HIT15 — 시네마틱 오케스트라 히트
+// 칼 스윙 (Pixabay Dragon Studio, 2.2초) — 운영자 직접 선곡 (8/23), VS 등장용.
+// 종전 hit-orchestra.ogg(Kenney jingles HIT15) 를 대체.
+const HIT_SOURCE = '/sfx/dragon-studio-sword-slice-2-393845.mp3';
 const FANFARE_SOURCE = '/sfx/fanfare.mp3'; // Hyper Ultra Fanfare (CC0, 6.2초)
 
 let ctx: AudioContext | null = null;
@@ -82,19 +86,18 @@ export function armSfx(): (() => void) | undefined {
 }
 
 /**
- * 카드 셔플 — R2 추첨의 셔플 구간(기본 2.2초, 애니메이션과 동일)을 채운다.
- * 샘플 길이와 무관하게 루프로 돌리고 끝에서 0.15초 페이드아웃 (루프 소스 정지 클릭음 방지).
+ * 카드 셔플 — R2 추첨의 셔플(2.4초)~배치(1초) 구간을 채운다 (기본 3.4초).
+ * 샘플(4.6초 원샷)이 구간보다 길어서 끝 0.3초 페이드아웃으로 잘라 정지 클릭음을 막는다.
  */
-export function playShuffle(durationSec = 2.2): void {
+export function playShuffle(durationSec = 3.4): void {
   const c = context();
   if (!c || !shuffleBuffer || c.state !== 'running') return;
   try {
     const src = c.createBufferSource();
     src.buffer = shuffleBuffer;
-    src.loop = true;
     const gain = c.createGain();
-    gain.gain.setValueAtTime(0.5, c.currentTime);
-    gain.gain.setValueAtTime(0.5, c.currentTime + durationSec - 0.15);
+    gain.gain.setValueAtTime(0.6, c.currentTime);
+    gain.gain.setValueAtTime(0.6, c.currentTime + durationSec - 0.3);
     gain.gain.linearRampToValueAtTime(0, c.currentTime + durationSec);
     src.connect(gain).connect(c.destination);
     src.start();
@@ -197,8 +200,8 @@ export function playImpact(volume = 1): void {
 }
 
 /**
- * 대결 포커스(VS) 등장 — 오케스트라 히트 샘플 + 서브 드롭.
- * 합성 붐 단독에서 교체 (8/22 "찾아서 넣자"): 어택은 실제 오케스트라 히트가,
+ * 대결 포커스(VS) 등장 — 칼 스윙 샘플 + 서브 드롭 (8/23 운영자 선곡으로
+ * 오케스트라 히트에서 교체 — "칼소리는 VS 나올 때"). 어택은 칼 스윙이,
  * 무게감은 저역 사인 드롭이 담당한다. 샘플이 아직 로드 전이면 합성 붐 폴백.
  */
 export function playVersus(): void {
