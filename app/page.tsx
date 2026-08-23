@@ -485,12 +485,12 @@ function FreezeReveal({ state, match }: { state: PublicState; match: Match }) {
                   side === 'A' ? 'order-1 items-end text-right' : 'order-3 items-start text-left'
                 }`}
               >
-                {/* 8/24 최종 — 길이별 유동 크기 철회 (운영자: "상대팀이랑 사이즈
-                    다를 수도 있는 거잖아"). 양쪽 동일 고정 크기 = 20자 팀명이
-                    한 줄에 들어가는 상한(2xl text-4xl, 실측 598px/약 705px 한도).
-                    line-clamp-1 은 최후 방어선 */}
+                {/* 8/24 최종 — 크기는 양쪽 동일 고정 5xl ("유동 금지·적당한 크기",
+                    4xl "너무 작다"·6xl 은 20자 중 8자 잘림으로 기각). 20자처럼
+                    한 줄을 넘는 팀명만 두 줄로 흐른다 (크기 유동 아님) —
+                    line-clamp-2 가 상한 */}
                 <span
-                  className="line-clamp-1 text-2xl font-extrabold lg:text-3xl 2xl:text-4xl"
+                  className="line-clamp-2 text-2xl leading-tight font-extrabold lg:text-4xl 2xl:text-5xl"
                   style={{ color: SIDE_COLORS[side] }}
                 >
                   {team?.team || '팀 미입력'}
