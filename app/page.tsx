@@ -763,6 +763,54 @@ const CHAMP_IMPACT_MS = 560;
  * 카드 안쪽은 등록된 완성 카드 PNG 로 통째로 교체하는 방식 (디자이너 인계 메모 §6) —
  * 부유·글로우·포일 스윕 등 바깥 연출은 그대로 둔다.
  */
+/** 결선 카운트다운 — 표 연출이 끝난 뒤 5→1 (한 숫자 0.9초), MC 육성 카운트와 동행. */
+const COUNT_FROM = 5;
+const COUNT_STEP_MS = 900;
+
+/**
+ * 결선 카운트다운 오버레이 (8/24 시안) — [공개] 직후 표 카드가 열리기 전 5초.
+ * 큐시트의 MC "5-4-3-2-1 → LED 결과" 순서에 화면이 함께 뛰고, 카운트가 끝나야
+ * 첫 카드가 열린다. 무음 (카운트는 MC 육성 몫 — 화면 소리를 얹으면 어긋날 때
+ * 티가 난다). 새로고침하면 건너뛰고 우승 무대 직행 (기존 1회성 연출과 같은 규칙).
+ */
+function Countdown({ onDone }: { onDone: () => void }) {
+  const [n, setN] = useState(COUNT_FROM);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (n > 1) setN(n - 1);
+      else onDone();
+    }, COUNT_STEP_MS);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onDone 은 부모의 세터 고정 참조
+  }, [n]);
+
+  return (
+    <div className="fixed inset-0 z-30 grid place-items-center overflow-hidden bg-black">
+      <div className="count-bg" />
+      <div className="relative flex flex-col items-center gap-2 2xl:gap-4">
+        <p className="font-en text-lg font-extrabold tracking-[0.55em] text-white/45 2xl:text-2xl">
+          WINNER&nbsp;ANNOUNCE
+        </p>
+        {/* key={n} — 숫자가 바뀔 때마다 팝·링 애니메이션 재시작 */}
+        <div key={n} className="relative grid place-items-center">
+          <span className="count-ring" />
+          <span className="count-ring count-ring2" />
+          <span className="count-num font-display">{n}</span>
+        </div>
+        <div className="flex gap-3.5">
+          {[5, 4, 3, 2, 1].map((d) => (
+            <span
+              key={d}
+              className="h-2 w-2 rounded-full transition-colors duration-300 2xl:h-2.5 2xl:w-2.5"
+              style={{ background: d >= n ? 'var(--orange)' : 'rgba(255,255,255,0.14)' }}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ChampionTakeover({ state, final }: { state: PublicState; final: Match }) {
   const index = winningTeamId(final);
   const team = teamAt(state, index);
@@ -991,6 +1039,10 @@ export default function ViewerPage() {
   const [finalSeq, setFinalSeq] = useState<Match | null>(null);
   // R2 추첨 시퀀스 — 추첨 순간의 준결승 스냅샷 고정 (폴링 갱신에 흔들리지 않게)
   const [drawSeq, setDrawSeq] = useState<[Match, Match] | null>(null);
+  // 결선 카운트다운 (8/24 시안) — [공개] 감지 즉시 5초 카운트, 끝나면 표 연출 →
+  // 우승 테이크오버 순. 카운트 도는 동안 공개할 결선 스냅샷은 ref 에 보관
+  const [countdown, setCountdown] = useState(false);
+  const pendingFinalRef = useRef<Match | null>(null);
   const revRef = useRef(0);
   const prevAnnouncedRef = useRef<Record<string, boolean> | null>(null); // null = 첫 스냅샷 전
   const prevDrawnRef = useRef<boolean | null>(null);
@@ -1027,11 +1079,10 @@ export default function ViewerPage() {
           (m) => m.id === 'F' && isAnnounced(m) && prevA[m.id] === false && (m.votes?.length ?? 0) > 0,
         );
         if (finalJust) {
-          setFinalSeq(finalJust);
-          setTimeout(
-            () => setFinalSeq(null),
-            (finalJust.votes?.length ?? 0) * CHIP_INTERVAL_MS + 800 + 1600,
-          );
+          // 순서 (8/24 운영자): 카운트다운 5초 → 표 공개 연출 → 우승 무대.
+          // MC "5-4-3-2-1" 과 함께 뛰고, 카운트가 끝나야 첫 카드가 열린다
+          pendingFinalRef.current = finalJust;
+          setCountdown(true);
         }
       }
       prevAnnouncedRef.current = Object.fromEntries(next.matches.map((m) => [m.id, isAnnounced(m)]));
@@ -1345,6 +1396,50 @@ export default function ViewerPage() {
         /* 카드 플립 공통 (공개 칩 · 추첨 카드) — 기본 상태(애니메이션 없음)가 앞면이라
            reduced-motion 에서 animation:none 만으로 완성 상태가 된다 */
         .chip-outer { perspective: 700px; animation: chipIn 0.4s ease-out both; }
+        /* ── 결선 카운트다운 (8/24 시안) ────────────────────────────── */
+        .count-bg {
+          position: absolute; inset: 0;
+          background:
+            radial-gradient(ellipse 62% 46% at 50% 42%, rgba(236,108,1,0.17), transparent 70%),
+            radial-gradient(ellipse 95% 60% at 50% 112%, rgba(236,108,1,0.10), transparent 70%),
+            radial-gradient(ellipse 140% 100% at 50% 50%, transparent 55%, rgba(0,0,0,0.55) 100%);
+          animation: backdropIn 0.6s ease-out;
+        }
+        .count-bg::before, .count-bg::after {
+          content: ''; position: absolute; top: -22%; bottom: -22%; left: 50%; width: 17vw;
+          background: linear-gradient(180deg, rgba(255,177,92,0.11), rgba(236,108,1,0.02) 70%, transparent);
+          clip-path: polygon(38% 0, 62% 0, 96% 100%, 4% 100%);
+          animation: beamShimmer 4s ease-in-out infinite;
+        }
+        .count-bg::before { transform: translateX(-50%) rotate(13deg); }
+        .count-bg::after { transform: translateX(-50%) rotate(-13deg); animation-delay: 2s; }
+        .count-num {
+          font-size: min(46vh, 30rem); line-height: 0.95; padding: 0 0.12em;
+          color: transparent; background: linear-gradient(180deg, #ffdfb4 0%, #ff9b3e 36%, var(--orange) 72%, #a34700 100%);
+          -webkit-background-clip: text; background-clip: text;
+          filter: drop-shadow(0 0 22px rgba(236,108,1,0.5)) drop-shadow(0 14px 70px rgba(236,108,1,0.35));
+          animation: countPop ${COUNT_STEP_MS / 1000}s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        @keyframes countPop {
+          0% { opacity: 0; transform: scale(2.1); }
+          30% { opacity: 1; transform: scale(0.97); }
+          48% { transform: scale(1.015); }
+          62% { transform: scale(1); }
+          86% { opacity: 1; transform: scale(1); }
+          100% { opacity: 0.25; transform: scale(0.92); }
+        }
+        .count-ring {
+          position: absolute; width: min(52vh, 34rem); aspect-ratio: 1; border-radius: 9999px;
+          border: 2px solid rgba(236,108,1,0.55);
+          animation: countRing ${COUNT_STEP_MS / 1000}s ease-out both;
+        }
+        .count-ring2 { border-color: rgba(255,177,92,0.3); animation-delay: 0.12s; }
+        @keyframes countRing { from { transform: scale(0.5); opacity: 0.9; } to { transform: scale(1.45); opacity: 0; } }
+        @media (prefers-reduced-motion: reduce) {
+          .count-num, .count-ring { animation: none; }
+          .count-ring { display: none; }
+        }
+
         @keyframes chipIn { from { opacity: 0; transform: translateY(22px); } }
         .chip-inner {
           transform-style: preserve-3d;
@@ -1595,9 +1690,22 @@ export default function ViewerPage() {
         </>
       )}
 
-      {/* 우승 테이크오버 — 결선 공개(=발표, 결선 특례) 시. 표 연출(finalSeq)이
-          도는 동안은 뒤로 미룬다: 마지막 카드가 승부를 확정한 직후에 슬램이 떨어진다 */}
-      {champion && !finalSeq && <ChampionTakeover state={state} final={final} />}
+      {/* 우승 테이크오버 — 결선 공개(=발표, 결선 특례) 시. 카운트다운 → 표 연출
+          (finalSeq) 이 도는 동안은 뒤로 미룬다 (0표 백업·새로고침은 카운트 없이 직행) */}
+      {champion && countdown && (
+        <Countdown
+          onDone={() => {
+            setCountdown(false);
+            const m = pendingFinalRef.current;
+            if (m) {
+              pendingFinalRef.current = null;
+              setFinalSeq(m);
+              setTimeout(() => setFinalSeq(null), (m.votes?.length ?? 0) * CHIP_INTERVAL_MS + 800 + 1600);
+            }
+          }}
+        />
+      )}
+      {champion && !finalSeq && !countdown && <ChampionTakeover state={state} final={final} />}
     </main>
   );
 }
