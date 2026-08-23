@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { CharacterArt, SchoolTag, TRACK_COLORS, Wordmark } from '@/components/ui';
-import { armSfx, playDrum, playFanfare, playFlip, playImpact, playShuffle, playVersus } from '@/lib/sfx';
+import { armSfx, playDrum, playFlip, playShuffle, playVersus } from '@/lib/sfx';
 import universityLogos from '@/lib/universityLogos';
 import { isAnnounced, winningTeamId, type Match, type Team } from '@/lib/tournament';
 import type { ReactNode } from 'react';
@@ -758,13 +758,9 @@ function ChampionTakeover({ state, final }: { state: PublicState; final: Match }
   const fxRef = useRef<HTMLCanvasElement | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
 
-  // 팡파레 — 큐시트의 "팡파레 BGM" 담당 (8/22). CHAMPION 레터 드롭(1.04초)에 맞춘다.
-  // 컨페티 이펙트와 분리한 이유: 아래 이펙트는 reduced-motion 이면 통째로 건너뛰는데,
-  // 팡파레는 모션이 아니라 발표라 그때도 나야 한다. 타이머+클린업 = StrictMode 방어
-  useEffect(() => {
-    const timer = setTimeout(() => playFanfare(), 1040);
-    return () => clearTimeout(timer);
-  }, []);
+  // 팡파레·슬램 소리는 8/24 제거 ("일단 지워봐") — 우승 무대는 일단 무음.
+  // ⚠ 큐시트의 "팡파레 BGM" 은 음향 콘솔 목록에 없어 화면이 담당하기로 했던 것
+  // (8/22 확인) — 이 상태로 가면 행사에서 팡파레가 아예 없다. 재도입 시 #52 참조.
 
   // 컨페티 — 마운트 1회 재생. 내부 좌표는 높이 1080 고정(원본 튜닝값 유지),
   // 폭만 화면 비율을 따른다. 발사 원점은 카드 DOM 실측 — 레이아웃이 달라도 정중앙.
@@ -861,7 +857,6 @@ function ChampionTakeover({ state, final }: { state: PublicState; final: Match }
         const r = cardRef.current?.getBoundingClientRect();
         const ox = r ? ((r.left + r.width / 2) / innerWidth) * cv.width : cv.width / 2;
         const oy = r ? ((r.top + r.height / 2) / innerHeight) * H : H * 0.46;
-        playImpact(); // 슬램 임팩트(합성 유지) — 화면 흔들림·충격파와 같은 시점
         fireSparks(46, ox, oy);
         fireConfetti(90, ox, oy + 24, -Math.PI, 0, 17); // 카드 중앙 폭발
       }, CHAMP_IMPACT_MS),

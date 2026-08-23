@@ -18,7 +18,9 @@ const SHUFFLE_SOURCE = '/sfx/freesound_community-card-mixing-48088.mp3';
 // 칼 스윙 (Pixabay Dragon Studio, 2.2초) — 운영자 직접 선곡 (8/23), VS 등장용.
 // 종전 hit-orchestra.ogg(Kenney jingles HIT15) 를 대체.
 const HIT_SOURCE = '/sfx/dragon-studio-sword-slice-2-393845.mp3';
-const FANFARE_SOURCE = '/sfx/fanfare.mp3'; // Hyper Ultra Fanfare (CC0, 6.2초)
+// 팡파레(fanfare.mp3)·우승 슬램 소리는 8/24 제거 ("일단 지워봐") — 파일은 유지.
+// ⚠ 큐시트 "팡파레 BGM" 은 화면 담당이었다 (음향 콘솔 목록에 없음, 8/22) —
+// 이 상태면 행사에서 팡파레가 아예 없다. 재도입 시 #52·#79 참조.
 // 시네마틱 탐 히트 (Pixabay fronbondi_skegs, 1.68초) — 운영자 선곡 (8/23),
 // **투표 공개의 표 카드 플립**용 ("드럼 히트를 심사위원들 투표 공개할 때" —
 // 슬램 아님). 카드 놓기 폴리를 이 자리에서만 대체, 추첨 카드 플립은 종전 유지.
@@ -28,7 +30,6 @@ let ctx: AudioContext | null = null;
 let flipBuffers: AudioBuffer[] | null = null;
 let shuffleBuffer: AudioBuffer | null = null;
 let hitBuffer: AudioBuffer | null = null;
-let fanfareBuffer: AudioBuffer | null = null;
 let drumBuffer: AudioBuffer | null = null;
 let loadStarted = false;
 let flipIdx = 0;
@@ -51,18 +52,16 @@ async function load(c: AudioContext): Promise<void> {
     return c.decodeAudioData(await res.arrayBuffer());
   };
   try {
-    [flipBuffers, shuffleBuffer, hitBuffer, fanfareBuffer, drumBuffer] = await Promise.all([
+    [flipBuffers, shuffleBuffer, hitBuffer, drumBuffer] = await Promise.all([
       Promise.all(FLIP_SOURCES.map(decode)),
       decode(SHUFFLE_SOURCE),
       decode(HIT_SOURCE),
-      decode(FANFARE_SOURCE),
       decode(DRUM_SOURCE),
     ]);
   } catch {
     flipBuffers = null;
     shuffleBuffer = null;
     hitBuffer = null;
-    fanfareBuffer = null;
     drumBuffer = null;
     loadStarted = false; // 폴링 화면이라 다음 armSfx/재생 경로에서 재시도할 여지를 남긴다
   }
@@ -111,11 +110,9 @@ export function playShuffle(durationSec = 3.4): void {
 
 /**
  * 임팩트 붐 — 샘플 없이 합성 (서브 사인 드롭 + 로우패스 노이즈 버스트).
- * 카지노 팩에는 무대 임팩트급 소리가 없어서, 에셋 추가 대신 합성으로 해결했다.
- * volume: 우승 슬램 1.0, 대결 포커스(VS) 등장은 0.75 — 같은 소리의 강약 관계로
- * "경기 시작 < 우승"의 위계를 만든다 (별도 샘플 2종보다 통일감 우선).
+ * 우승 슬램 배선은 8/24 제거 — 지금은 VS 칼 스윙 로드 전 폴백으로만 쓰인다.
  */
-export function playImpact(volume = 1): void {
+function playImpact(volume = 1): void {
   const c = context();
   if (!c || c.state !== 'running') return;
   try {
@@ -181,25 +178,6 @@ export function playVersus(): void {
     osc.connect(oscGain).connect(c.destination);
     osc.start(t);
     osc.stop(t + 0.55);
-  } catch {
-    /* 소리 실패가 화면을 막으면 안 된다 */
-  }
-}
-
-/**
- * 우승 팡파레 — 큐시트의 "팡파레 BGM" 을 화면이 담당한다 (8/22 확인: 음향 콘솔
- * 목록에 없음). 우승 무대의 CHAMPION 레터 드롭(1.04초)에 맞춰 재생.
- */
-export function playFanfare(): void {
-  const c = context();
-  if (!c || !fanfareBuffer || c.state !== 'running') return;
-  try {
-    const src = c.createBufferSource();
-    src.buffer = fanfareBuffer;
-    const gain = c.createGain();
-    gain.gain.value = 0.9;
-    src.connect(gain).connect(c.destination);
-    src.start();
   } catch {
     /* 소리 실패가 화면을 막으면 안 된다 */
   }
