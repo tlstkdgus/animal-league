@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { CharacterArt, SchoolTag, TRACK_COLORS, Wordmark } from '@/components/ui';
-import { armSfx, playFan, playFanfare, playFlip, playImpact, playShuffle, playVersus, playWin } from '@/lib/sfx';
+import { armSfx, playChips, playFan, playFanfare, playFlip, playImpact, playShuffle, playVersus } from '@/lib/sfx';
 import universityLogos from '@/lib/universityLogos';
 import { isAnnounced, winningTeamId, type Match, type Team } from '@/lib/tournament';
 import type { ReactNode } from 'react';
@@ -372,11 +372,13 @@ function FocusLive({ state, match }: { state: PublicState; match: Match }) {
   // VS 등장 임팩트 (8/22 운영자 요청) — 화면 전환은 정보라 reduced-motion 에도 낸다
   // (승자 클래터와 같은 판단). deps 가 match.id 인 이유: 이전 경기가 live 인 채로
   // 다음 경기를 시작하면 언마운트 없이 경기만 바뀐다 — 그때도 울려야 한다.
-  // setTimeout + 클린업은 StrictMode(dev) 이중 실행 방어 — 동기 호출이면 두 번 울린다
+  // setTimeout + 클린업은 StrictMode(dev) 이중 실행 방어 — 동기 호출이면 두 번 울린다.
+  // R2 는 무음 (8/23 운영자 지시) — R1·F 등장에만 낸다.
   useEffect(() => {
+    if (match.round === 2) return;
     const timer = setTimeout(() => playVersus(), 50);
     return () => clearTimeout(timer);
-  }, [match.id]);
+  }, [match.id, match.round]);
 
   return (
     <>
@@ -557,15 +559,13 @@ function ResultScene({ state, match }: { state: PublicState; match: Match }) {
   const tally = (side: 'A' | 'B') => votes.filter((v) => v === side).length;
 
   useEffect(() => {
-    const timer = setTimeout(() => playWin(), 150);
+    const timer = setTimeout(() => playChips(), 150);
     return () => clearTimeout(timer);
   }, []);
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-8 py-6 lg:gap-10">
-      <p className="champion-rise text-2xl font-extrabold tracking-tight lg:text-4xl 2xl:text-5xl">
-        결과를 발표합니다
-      </p>
+      {/* "결과를 발표합니다" 멘트는 8/23 삭제 — MC 가 육성으로 하는 말이라 화면 중복 */}
       <div className="grid w-full max-w-6xl grid-cols-1 items-center gap-8 lg:grid-cols-[1fr_auto_1fr] lg:gap-12">
         <TeamHero state={state} index={match.a} dimmed={match.winner !== 'A'} winner={match.winner === 'A'} />
         <div className="flex flex-col items-center gap-2">
@@ -986,8 +986,10 @@ export default function ViewerPage() {
       // 결선은 결과 화면 대신 우승 테이크오버가 바로 뜬다
       const prevA = prevAnnouncedRef.current;
       if (prevA) {
+        // R2 는 결과 화면 생략 (8/23 운영자 지시) — 발표 즉시 대진표로 (승자는
+        // 결승 대기 카드 선반영으로 이미 보인다). 결과 화면은 R1 만.
         const justAnnounced = next.matches.find(
-          (m) => isAnnounced(m) && prevA[m.id] === false && m.id !== 'F' && (m.votes?.length ?? 0) > 0,
+          (m) => isAnnounced(m) && prevA[m.id] === false && m.round === 1 && (m.votes?.length ?? 0) > 0,
         );
         if (justAnnounced) {
           setResultScene(justAnnounced);
