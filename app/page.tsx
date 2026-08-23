@@ -1408,13 +1408,13 @@ export default function ViewerPage() {
           filter: drop-shadow(0 0 22px rgba(236,108,1,0.5)) drop-shadow(0 14px 70px rgba(236,108,1,0.35));
           animation: countPop ${COUNT_STEP_MS / 1000}s cubic-bezier(0.16, 1, 0.3, 1) both;
         }
+        /* 끝 페이드아웃 없음 (8/24 실측 후 조정) — 마지막 0.14초에 흐려지면
+           숫자당 1초를 다 못 채운 것처럼 빨라 보인다. 다음 숫자 팝이 교체를 담당 */
         @keyframes countPop {
           0% { opacity: 0; transform: scale(2.1); }
           30% { opacity: 1; transform: scale(0.97); }
           48% { transform: scale(1.015); }
-          62% { transform: scale(1); }
-          86% { opacity: 1; transform: scale(1); }
-          100% { opacity: 0.25; transform: scale(0.92); }
+          62%, 100% { opacity: 1; transform: scale(1); }
         }
         .count-ring {
           position: absolute; width: min(52vh, 34rem); aspect-ratio: 1; border-radius: 9999px;
