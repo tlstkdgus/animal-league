@@ -485,14 +485,17 @@ function FreezeReveal({ state, match }: { state: PublicState; match: Match }) {
                   side === 'A' ? 'order-1 items-end text-right' : 'order-3 items-start text-left'
                 }`}
               >
-                {/* 8/24 — 팀명 숫자 한 단계 아래 8xl (9xl 은 6자 팀명이 잘림) */}
+                {/* 8/24 최종 — 길이별 유동 크기 철회 (운영자: "상대팀이랑 사이즈
+                    다를 수도 있는 거잖아"). 양쪽 동일 고정 크기 = 20자 팀명이
+                    한 줄에 들어가는 상한(2xl text-4xl, 실측 598px/약 705px 한도).
+                    line-clamp-1 은 최후 방어선 */}
                 <span
-                  className="line-clamp-1 text-4xl font-extrabold lg:text-6xl 2xl:text-8xl"
+                  className="line-clamp-1 text-2xl font-extrabold lg:text-3xl 2xl:text-4xl"
                   style={{ color: SIDE_COLORS[side] }}
                 >
                   {team?.team || '팀 미입력'}
                 </span>
-                <span className="mt-1 line-clamp-1 text-lg font-bold text-white/60 lg:text-2xl 2xl:text-4xl">
+                <span className="mt-1 line-clamp-1 text-sm font-bold text-white/60 lg:text-lg 2xl:text-2xl">
                   {team?.school || '학교 미입력'}
                 </span>
               </div>
