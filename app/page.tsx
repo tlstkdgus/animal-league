@@ -476,11 +476,36 @@ function FreezeReveal({ state, match }: { state: PublicState; match: Match }) {
         <span className="font-display text-4xl text-(--orange) lg:text-5xl 2xl:text-6xl">
           {match.round === 3 ? 'FINAL' : `ROUND ${match.round}-${match.id.split('-')[1]}`}
         </span>
-        {/* 집계는 열린 칩만 센다 — 화면의 칩과 숫자가 같은 시계로 움직인다 */}
-        <div className="font-en flex items-center gap-7 text-7xl font-extrabold tabular-nums lg:text-8xl 2xl:text-9xl">
-          <span style={{ color: SIDE_COLORS.A }}>{openTally('A')}</span>
-          <span className="text-4xl text-white/25">:</span>
-          <span style={{ color: SIDE_COLORS.B }}>{openTally('B')}</span>
+        {/* 집계 양옆에 팀명+학교 (8/23 운영자 지시) — 같은 학교끼리 붙으면 숫자
+            색만으로는 어느 쪽이 누구인지 확인이 안 된다. 집계는 열린 칩만 센다 —
+            화면의 칩과 숫자가 같은 시계로 움직인다 */}
+        <div className="flex items-center gap-6 lg:gap-9 2xl:gap-12">
+          {(['A', 'B'] as const).map((side) => {
+            const team = teamAt(state, side === 'A' ? match.a : match.b);
+            return (
+              <div
+                key={side}
+                className={`flex w-56 flex-col lg:w-72 2xl:w-96 ${
+                  side === 'A' ? 'order-1 items-end text-right' : 'order-3 items-start text-left'
+                }`}
+              >
+                <span
+                  className="line-clamp-1 text-2xl font-extrabold lg:text-3xl 2xl:text-4xl"
+                  style={{ color: SIDE_COLORS[side] }}
+                >
+                  {team?.team || '팀 미입력'}
+                </span>
+                <span className="line-clamp-1 text-sm font-bold text-white/55 lg:text-base 2xl:text-xl">
+                  {team?.school || '학교 미입력'}
+                </span>
+              </div>
+            );
+          })}
+          <div className="font-en order-2 flex items-center gap-7 text-7xl font-extrabold tabular-nums lg:text-8xl 2xl:text-9xl">
+            <span style={{ color: SIDE_COLORS.A }}>{openTally('A')}</span>
+            <span className="text-4xl text-white/25">:</span>
+            <span style={{ color: SIDE_COLORS.B }}>{openTally('B')}</span>
+          </div>
         </div>
       </div>
 

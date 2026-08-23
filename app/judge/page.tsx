@@ -145,8 +145,6 @@ function JudgeForm({
 }) {
   const [winner, setWinner] = useState<Side | null>(null);
   const [comment, setComment] = useState('');
-  const [videoA, setVideoA] = useState(false);
-  const [videoB, setVideoB] = useState(false);
   const [proxyMode, setProxyMode] = useState(false);
   const [proxyName, setProxyName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -154,7 +152,6 @@ function JudgeForm({
   const [submitted, setSubmitted] = useState<string[]>([]); // 이번 경기에서 제출 완료된 명의들
 
   const submitAs = proxyMode && proxyName ? proxyName : identity.name;
-  const isRound2 = match.round === 2;
 
   // 모바일: 가로형 행 카드 (스크롤 최소화) / md 이상: 세로형 대형 카드 — 태블릿·노트북에서
   // 좁은 띠로 보이던 것을 캐릭터 아트 중심의 큰 카드 두 장이 좌우로 서게 바꿨다.
@@ -216,8 +213,6 @@ function JudgeForm({
           name: submitAs,
           winner,
           comment,
-          videoA,
-          videoB,
         }),
       });
       setSubmitted((prev) => (prev.includes(submitAs) ? prev : [...prev, submitAs]));
@@ -257,23 +252,9 @@ function JudgeForm({
         {sideCard('B')}
       </div>
 
+      {/* R2 "영상 대체" 체크박스는 8/23 제거 (운영자 지시) — 서버 필드·운영 콘솔
+          기록 경로는 유지: 필요해지면 운영 콘솔에서 기록한다 */}
       <div className="space-y-4 md:mx-auto md:w-full md:max-w-2xl">
-      {isRound2 && (
-        <div className="rounded-xl border border-white/10 bg-(--surface) p-3 text-sm">
-          <p className="mb-2 text-xs leading-relaxed text-white/50">
-            시연 장애로 <b>영상 대체 진행</b>한 팀 체크 — 실현 가능성(20점) 반영 근거로 기록됩니다 (규정 §2)
-          </p>
-          <div className="flex gap-4">
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={videoA} onChange={(e) => setVideoA(e.target.checked)} />A 영상 대체
-            </label>
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={videoB} onChange={(e) => setVideoB(e.target.checked)} />B 영상 대체
-            </label>
-          </div>
-        </div>
-      )}
-
       <textarea
         value={comment}
         onChange={(e) => setComment(e.target.value)}
