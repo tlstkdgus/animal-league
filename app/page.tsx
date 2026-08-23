@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { CharacterArt, SchoolTag, TRACK_COLORS, Wordmark } from '@/components/ui';
-import { armSfx, playChips, playDrum, playFan, playFanfare, playFlip, playImpact, playShuffle, playVersus, playWin } from '@/lib/sfx';
+import { armSfx, playChips, playDrum, playFan, playFanfare, playFlip, playImpact, playShuffle, playVersus } from '@/lib/sfx';
 import universityLogos from '@/lib/universityLogos';
 import { isAnnounced, winningTeamId, type Match, type Team } from '@/lib/tournament';
 import type { ReactNode } from 'react';
@@ -453,14 +453,12 @@ function FreezeReveal({ state, match }: { state: PublicState; match: Match }) {
   // (JS 타이머로 CSS 타이밍을 수치 복제하면 두 시계가 되어 어긋난 전례 — PR #24)
   const [opened, setOpened] = useState(0);
 
-  // 도입 소리 — 승리 노티(8/23 운영자 재지시: mixkit 을 결과 화면 대신 이 자리에)
-  // + 덱 부채꼴 폴리. 노티는 공개가 시작됐다는 정보라 reduced-motion 에도 내고,
-  // 부채꼴은 칩 등장 모션의 폴리라 모션 축소 시 생략 (기존 판단 유지)
+  // 도입 소리 — 덱 부채꼴. reduced-motion 은 칩 등장 모션이 없으니 생략.
+  // (mixkit 승리 노티는 #72 결과 화면→#73 철회→#75 이 자리→#77 최종 제거 —
+  // 8/23 운영자 "mixkit은 빼". 플립 드럼만 남긴다)
   useEffect(() => {
-    const timer = setTimeout(() => {
-      playWin();
-      if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) playFan();
-    }, 100);
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const timer = setTimeout(() => playFan(), 100);
     return () => clearTimeout(timer);
   }, []);
 
