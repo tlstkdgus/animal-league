@@ -380,8 +380,6 @@ function ProxyEntry({
   const [name, setName] = useState('');
   const [winner, setWinner] = useState<Side | null>(null);
   const [comment, setComment] = useState('');
-  const [videoA, setVideoA] = useState(false);
-  const [videoB, setVideoB] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState('');
@@ -396,7 +394,7 @@ function ProxyEntry({
     setBusy(true);
     setError('');
     try {
-      await action({ action: 'proxyVote', matchId: match.id, name, winner, comment, videoA, videoB });
+      await action({ action: 'proxyVote', matchId: match.id, name, winner, comment });
       setSaved(`${name} 명의로 저장됨 — 공개 전까지 다시 제출하면 덮어씁니다.`);
       setWinner(null);
       setComment('');
@@ -450,16 +448,8 @@ function ProxyEntry({
           maxLength={500}
           className="w-full rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-xs outline-none"
         />
-        {match.round === 2 && (
-          <div className="flex gap-4 text-xs text-white/60">
-            <label className="flex items-center gap-1.5">
-              <input type="checkbox" checked={videoA} onChange={(e) => setVideoA(e.target.checked)} />A 영상 대체
-            </label>
-            <label className="flex items-center gap-1.5">
-              <input type="checkbox" checked={videoB} onChange={(e) => setVideoB(e.target.checked)} />B 영상 대체
-            </label>
-          </div>
-        )}
+        {/* R2 "영상 대체" 체크박스는 심사(#74)에 이어 8/24 대리 패널에서도 제거
+            (운영자 재확인) — 서버 필드는 옵션이라 잔존, UI 는 어디에도 없다 */}
         {error && <p className="text-xs text-[var(--live)]">{error}</p>}
         {saved && !error && <p className="text-xs text-[var(--done)]">✓ {saved}</p>}
         <button
