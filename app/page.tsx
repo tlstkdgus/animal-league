@@ -1604,10 +1604,9 @@ export default function ViewerPage() {
             ))
           ) : (
             <div className="col-span-2 flex justify-center">
+              {/* 상단 라벨("FINAL 진출 — R1 승자 집결 · 대진 추첨 대기")은 8/24 제거
+                  (운영자 "이거 좀 빼줘") — 박스·카드만으로 집결이 읽힌다 */}
               <div className="rounded-2xl border border-dashed border-white/20 bg-white/3 px-8 py-4 2xl:px-10 2xl:py-5">
-                <p className="mb-3 text-center text-xs font-bold text-white/40 2xl:text-sm">
-                  FINAL 진출 — R1 승자 집결 · 대진 추첨 대기
-                </p>
                 <div className="flex items-start justify-center gap-5 2xl:gap-6">
                   {r1Matches.map((m) => {
                     const idx = winningTeamId(m);
