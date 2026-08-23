@@ -12,8 +12,9 @@ const FLIP_SOURCES = [1, 2, 3, 4].map((n) => `/sfx/card-place-${n}.ogg`);
 // 카드 믹싱 (Pixabay freesound_community, 4.6초) — 운영자 직접 선곡 (8/23).
 // 종전 card-shuffle.ogg 루프를 대체 — 실제 카드 리플 소리라 루프 없이 원샷.
 const SHUFFLE_SOURCE = '/sfx/freesound_community-card-mixing-48088.mp3';
-const FAN_SOURCE = '/sfx/card-fan-1.ogg';
-const CHIPS_SOURCES = [1, 2].map((n) => `/sfx/chips-collide-${n}.ogg`);
+// 칩 클래터(chips-collide-*)+플링·덱 부채꼴(card-fan-1)은 8/23 제거 — 클래터는
+// 결과 화면 무음화, 부채꼴은 첫 플립 드럼과 겹침. 공개 화면 소리는 플립 드럼뿐.
+// 에셋 파일은 Kenney 팩 일부라 public/sfx 에 남긴다.
 // 칼 스윙 (Pixabay Dragon Studio, 2.2초) — 운영자 직접 선곡 (8/23), VS 등장용.
 // 종전 hit-orchestra.ogg(Kenney jingles HIT15) 를 대체.
 const HIT_SOURCE = '/sfx/dragon-studio-sword-slice-2-393845.mp3';
@@ -26,8 +27,6 @@ const DRUM_SOURCE = '/sfx/fronbondi_skegs-drum-huge-cinematic-tom-hit-283585.mp3
 let ctx: AudioContext | null = null;
 let flipBuffers: AudioBuffer[] | null = null;
 let shuffleBuffer: AudioBuffer | null = null;
-let fanBuffer: AudioBuffer | null = null;
-let chipsBuffers: AudioBuffer[] | null = null;
 let hitBuffer: AudioBuffer | null = null;
 let fanfareBuffer: AudioBuffer | null = null;
 let drumBuffer: AudioBuffer | null = null;
@@ -52,11 +51,9 @@ async function load(c: AudioContext): Promise<void> {
     return c.decodeAudioData(await res.arrayBuffer());
   };
   try {
-    [flipBuffers, shuffleBuffer, fanBuffer, chipsBuffers, hitBuffer, fanfareBuffer, drumBuffer] = await Promise.all([
+    [flipBuffers, shuffleBuffer, hitBuffer, fanfareBuffer, drumBuffer] = await Promise.all([
       Promise.all(FLIP_SOURCES.map(decode)),
       decode(SHUFFLE_SOURCE),
-      decode(FAN_SOURCE),
-      Promise.all(CHIPS_SOURCES.map(decode)),
       decode(HIT_SOURCE),
       decode(FANFARE_SOURCE),
       decode(DRUM_SOURCE),
@@ -64,8 +61,6 @@ async function load(c: AudioContext): Promise<void> {
   } catch {
     flipBuffers = null;
     shuffleBuffer = null;
-    fanBuffer = null;
-    chipsBuffers = null;
     hitBuffer = null;
     fanfareBuffer = null;
     drumBuffer = null;
@@ -109,57 +104,6 @@ export function playShuffle(durationSec = 3.4): void {
     src.connect(gain).connect(c.destination);
     src.start();
     src.stop(c.currentTime + durationSec);
-  } catch {
-    /* 소리 실패가 화면을 막으면 안 된다 */
-  }
-}
-
-/** 덱 부채꼴 펼치기 — 공개 시퀀스 시작("투표를 공개합니다" + 뒷면 칩 등장)에 1회. */
-export function playFan(): void {
-  const c = context();
-  if (!c || !fanBuffer || c.state !== 'running') return;
-  try {
-    const src = c.createBufferSource();
-    src.buffer = fanBuffer;
-    const gain = c.createGain();
-    gain.gain.value = 0.35; // 도입부 — 멘트를 덮지 않게 낮게
-    src.connect(gain).connect(c.destination);
-    src.start();
-  } catch {
-    /* 소리 실패가 화면을 막으면 안 된다 */
-  }
-}
-
-/**
- * 승자 발표 — 칩 무더기 클래터(두 샘플 70ms 레이어) + 상승 플링 2음.
- * 8/22 운영자 피드백("이겼을 때 소리 있어야")으로 클래터만으로는 약해서
- * 승리 문법(상승 음정)을 합성으로 얹었다 — 별도 팡파레 샘플 없이.
- */
-export function playChips(): void {
-  const c = context();
-  if (!c || !chipsBuffers || c.state !== 'running') return;
-  try {
-    chipsBuffers.forEach((buf, i) => {
-      const src = c.createBufferSource();
-      src.buffer = buf;
-      const gain = c.createGain();
-      gain.gain.value = 0.65;
-      src.connect(gain).connect(c.destination);
-      src.start(c.currentTime + i * 0.07);
-    });
-    // 상승 플링 — E5 → B5, 사인 2음. 짧고 밝게 (0.35초 감쇠)
-    [659.25, 987.77].forEach((freq, i) => {
-      const t = c.currentTime + 0.05 + i * 0.11;
-      const osc = c.createOscillator();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      const gain = c.createGain();
-      gain.gain.setValueAtTime(0.22, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
-      osc.connect(gain).connect(c.destination);
-      osc.start(t);
-      osc.stop(t + 0.4);
-    });
   } catch {
     /* 소리 실패가 화면을 막으면 안 된다 */
   }
