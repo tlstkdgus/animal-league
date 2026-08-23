@@ -613,3 +613,46 @@ export function reset(state: TournamentState, opts?: { clearTeams?: boolean }): 
   if (opts?.clearTeams) return fresh;
   return { ...fresh, teams: state.teams.map((t) => ({ ...t })) };
 }
+
+/** 리허설 점프 시점 — 큐시트 순서의 체크포인트 (2026-08-24, §6.3). */
+export const REHEARSAL_STAGES = [
+  'pre',
+  'r1-live',
+  'r1-done',
+  'drawn',
+  'r2-done',
+  'final-live',
+  'champion',
+] as const;
+export type RehearsalStage = (typeof REHEARSAL_STAGES)[number];
+
+/**
+ * 리허설 점프 (2026-08-24 운영자 요청 — "한번 실수하면 매번 초기화") — 경기
+ * 상태를 지우고 지정 시점까지 기존 프리미티브로 전진 재구성한다. 팀·명단·
+ * 코드는 유지 (reset 과 동일), 지나가는 경기는 전부 A 승·표 0건 (즉시 발표
+ * 간주 규칙 활용 — 리허설 표는 심사위원이 그 시점부터 직접 낸다).
+ * ⚠ 서버 레이어는 reset 과 같은 이유로 **votes 를 먼저 지우고** 호출할 것.
+ */
+export function seekStage(
+  state: TournamentState,
+  stage: RehearsalStage,
+  rng: Rng = Math.random,
+): TournamentState {
+  let s = reset(state);
+  const winA = (id: string) => {
+    s = startMatch(s, id);
+    s = revealResult(s, id, 'A');
+  };
+  if (stage === 'pre') return s;
+  if (stage === 'r1-live') return startMatch(s, 'R1-1');
+  for (const id of ROUND1_IDS) winA(id);
+  if (stage === 'r1-done') return s;
+  s = drawRound2(s, rng);
+  if (stage === 'drawn') return s;
+  for (const id of ROUND2_IDS) winA(id);
+  if (stage === 'r2-done') return s;
+  s = setFinal(s);
+  s = startMatch(s, FINAL_ID);
+  if (stage === 'final-live') return s;
+  return revealResult(s, FINAL_ID, 'A');
+}

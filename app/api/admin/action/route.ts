@@ -22,6 +22,9 @@ import {
   addJudge,
   removeJudge,
   reset,
+  seekStage,
+  REHEARSAL_STAGES,
+  type RehearsalStage,
   trackWarnings,
   findJudge,
   judgeSlug,
@@ -225,6 +228,16 @@ export async function POST(request: Request): Promise<Response> {
           await deleteAllVotes();
           const clearTeams = body.clearTeams === true;
           return ok({ state: adminView(await mutate((s) => reset(s, { clearTeams }))) });
+        }
+
+        case 'seekStage': {
+          // 리허설 점프 (8/24) — reset 과 같은 이유로 votes 먼저 삭제
+          const stage = body.stage as RehearsalStage;
+          if (!REHEARSAL_STAGES.includes(stage)) {
+            return fail(400, 'BAD_STAGE', `stage 는 ${REHEARSAL_STAGES.join('/')} 중 하나여야 합니다.`);
+          }
+          await deleteAllVotes();
+          return ok({ state: adminView(await mutate((s) => seekStage(s, stage))) });
         }
 
         default:

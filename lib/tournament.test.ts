@@ -20,6 +20,7 @@ import {
   matchesJudgeCode,
   reset,
   revealResult,
+  seekStage,
   setFinal,
   setTimer,
   shuffle,
@@ -561,4 +562,44 @@ test('수동 대진: 승자 아님·중복은 거부한다', () => {
   const base = afterRound1();
   expectError('INVALID_PAIRS', () => drawRound2(base, Math.random, [[0, 1], [2, 6]])); // 1 은 패자
   expectError('INVALID_PAIRS', () => drawRound2(base, Math.random, [[0, 0], [2, 6]])); // 중복
+});
+
+// ------------------------------------------------------------
+// 리허설 점프 (8/24) — seekStage
+// ------------------------------------------------------------
+
+test('리허설 점프: 각 시점의 상태 형태가 맞다', () => {
+  const base = afterRound1(); // 아무 진행 상태에서 출발해도 된다
+  const judges = [...base.judges];
+
+  const pre = seekStage(base, 'pre');
+  assert.equal(pre.matches.every((m) => m.status === 'ready' && m.winner === null), true);
+  assert.deepEqual(pre.judges, judges); // 명단 유지
+
+  const r1live = seekStage(base, 'r1-live');
+  assert.equal(liveMatch(r1live)?.id, 'R1-1');
+
+  const r1done = seekStage(base, 'r1-done');
+  assert.equal(['R1-1', 'R1-2', 'R1-3', 'R1-4'].every((id) => getMatch(r1done, id).status === 'done'), true);
+  assert.equal(getMatch(r1done, 'R2-1').a, null); // 추첨 전
+
+  const drawn = seekStage(base, 'drawn');
+  assert.notEqual(getMatch(drawn, 'R2-1').a, null);
+  assert.notEqual(getMatch(drawn, 'R2-2').b, null);
+
+  const r2done = seekStage(base, 'r2-done');
+  assert.equal(['R2-1', 'R2-2'].every((id) => getMatch(r2done, id).status === 'done'), true);
+  assert.equal(getMatch(r2done, 'F').a, null); // 결선 확정 전
+
+  const finalLive = seekStage(base, 'final-live');
+  assert.equal(liveMatch(finalLive)?.id, 'F');
+
+  const champ = seekStage(base, 'champion');
+  assert.equal(isAnnounced(getMatch(champ, 'F')), true); // 결선 특례 — 공개 즉시 발표
+});
+
+test('리허설 점프: 표는 항상 0건으로 지나간다 (즉시 발표 간주)', () => {
+  const s = seekStage(createInitialState(), 'r1-done');
+  assert.equal(s.matches.filter((m) => m.status === 'done').every((m) => (m.votes ?? []).length === 0), true);
+  assert.equal(['R1-1', 'R1-2', 'R1-3', 'R1-4'].every((id) => isAnnounced(getMatch(s, id))), true);
 });
