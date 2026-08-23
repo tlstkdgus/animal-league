@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { CharacterArt, SchoolTag, TRACK_COLORS, Wordmark } from '@/components/ui';
-import { armSfx, playChips, playFan, playFanfare, playFlip, playImpact, playShuffle, playVersus } from '@/lib/sfx';
+import { armSfx, playFan, playFanfare, playFlip, playImpact, playShuffle, playVersus, playWin } from '@/lib/sfx';
 import universityLogos from '@/lib/universityLogos';
 import { isAnnounced, winningTeamId, type Match, type Team } from '@/lib/tournament';
 import type { ReactNode } from 'react';
@@ -557,7 +557,7 @@ function ResultScene({ state, match }: { state: PublicState; match: Match }) {
   const tally = (side: 'A' | 'B') => votes.filter((v) => v === side).length;
 
   useEffect(() => {
-    const timer = setTimeout(() => playChips(), 150);
+    const timer = setTimeout(() => playWin(), 150);
     return () => clearTimeout(timer);
   }, []);
 
