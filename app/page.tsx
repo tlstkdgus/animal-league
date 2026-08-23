@@ -481,17 +481,19 @@ function FreezeReveal({ state, match }: { state: PublicState; match: Match }) {
             return (
               <div
                 key={side}
-                className={`flex w-56 flex-col lg:w-72 2xl:w-96 ${
+                className={`flex w-64 flex-col lg:w-88 2xl:w-120 ${
                   side === 'A' ? 'order-1 items-end text-right' : 'order-3 items-start text-left'
                 }`}
               >
+                {/* 8/24 확대 — "뒷줄까지" 기준은 집계 숫자와 같다: 팀명은 한 단계
+                    아래, 학교는 그 절반 급 */}
                 <span
-                  className="line-clamp-1 text-2xl font-extrabold lg:text-3xl 2xl:text-4xl"
+                  className="line-clamp-1 text-3xl font-extrabold lg:text-5xl 2xl:text-6xl"
                   style={{ color: SIDE_COLORS[side] }}
                 >
                   {team?.team || '팀 미입력'}
                 </span>
-                <span className="line-clamp-1 text-sm font-bold text-white/55 lg:text-base 2xl:text-xl">
+                <span className="mt-1 line-clamp-1 text-base font-bold text-white/60 lg:text-xl 2xl:text-3xl">
                   {team?.school || '학교 미입력'}
                 </span>
               </div>
