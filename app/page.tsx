@@ -763,9 +763,9 @@ const CHAMP_IMPACT_MS = 560;
  * 카드 안쪽은 등록된 완성 카드 PNG 로 통째로 교체하는 방식 (디자이너 인계 메모 §6) —
  * 부유·글로우·포일 스윕 등 바깥 연출은 그대로 둔다.
  */
-/** 결선 카운트다운 — 표 연출이 끝난 뒤 5→1 (한 숫자 0.9초), MC 육성 카운트와 동행. */
+/** 결선 카운트다운 — 5→1, 한 숫자 정확히 1초 (MC 육성 카운트와 동행). */
 const COUNT_FROM = 5;
-const COUNT_STEP_MS = 900;
+const COUNT_STEP_MS = 1000;
 
 /**
  * 결선 카운트다운 오버레이 (8/24 시안) — [공개] 직후 표 카드가 열리기 전 5초.
@@ -788,13 +788,9 @@ function Countdown({ onDone }: { onDone: () => void }) {
     <div className="fixed inset-0 z-30 grid place-items-center overflow-hidden bg-black">
       <div className="count-bg" />
       <div className="relative flex flex-col items-center gap-2 2xl:gap-4">
-        <p className="font-en text-lg font-extrabold tracking-[0.55em] text-white/45 2xl:text-2xl">
-          WINNER&nbsp;ANNOUNCE
-        </p>
-        {/* key={n} — 숫자가 바뀔 때마다 팝·링 애니메이션 재시작 */}
+        {/* key={n} — 숫자가 바뀔 때마다 팝 애니메이션 재시작.
+            WINNER ANNOUNCE 라벨·확산 링은 8/24 운영자 피드백으로 제거 — 넘버만 */}
         <div key={n} className="relative grid place-items-center">
-          <span className="count-ring" />
-          <span className="count-ring count-ring2" />
           <span className="count-num font-display">{n}</span>
         </div>
         <div className="flex gap-3.5">
@@ -1428,16 +1424,8 @@ export default function ViewerPage() {
           86% { opacity: 1; transform: scale(1); }
           100% { opacity: 0.25; transform: scale(0.92); }
         }
-        .count-ring {
-          position: absolute; width: min(52vh, 34rem); aspect-ratio: 1; border-radius: 9999px;
-          border: 2px solid rgba(236,108,1,0.55);
-          animation: countRing ${COUNT_STEP_MS / 1000}s ease-out both;
-        }
-        .count-ring2 { border-color: rgba(255,177,92,0.3); animation-delay: 0.12s; }
-        @keyframes countRing { from { transform: scale(0.5); opacity: 0.9; } to { transform: scale(1.45); opacity: 0; } }
         @media (prefers-reduced-motion: reduce) {
-          .count-num, .count-ring { animation: none; }
-          .count-ring { display: none; }
+          .count-num { animation: none; }
         }
 
         @keyframes chipIn { from { opacity: 0; transform: translateY(22px); } }
