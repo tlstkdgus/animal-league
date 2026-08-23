@@ -468,30 +468,31 @@ function FreezeReveal({ state, match }: { state: PublicState; match: Match }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-8 py-6 lg:gap-10 2xl:gap-12">
       {/* 라운드 + 집계 — 뒷줄 가독이 목표라 화면 요소 중 최대 크기 */}
-      <div className="flex flex-col items-center gap-1">
+      <div className="flex w-full flex-col items-center gap-1">
         <span className="font-display text-4xl text-(--orange) lg:text-5xl 2xl:text-6xl">
           {match.round === 3 ? 'FINAL' : `ROUND ${match.round}-${match.id.split('-')[1]}`}
         </span>
         {/* 집계 양옆에 팀명+학교 (8/23 운영자 지시) — 같은 학교끼리 붙으면 숫자
-            색만으로는 어느 쪽이 누구인지 확인이 안 된다. 집계는 열린 칩만 센다 —
-            화면의 칩과 숫자가 같은 시계로 움직인다 */}
-        <div className="flex items-center gap-6 lg:gap-9 2xl:gap-12">
+            색만으로는 어느 쪽이 누구인지 확인이 안 된다. 행을 화면 전폭으로 펴야
+            8xl 6자 팀명이 안 잘린다. 집계는 열린 칩만 센다 — 칩과 같은 시계 */}
+        <div className="flex w-full items-center gap-6 px-8 lg:gap-9 2xl:gap-12">
           {(['A', 'B'] as const).map((side) => {
             const team = teamAt(state, side === 'A' ? match.a : match.b);
             return (
               <div
                 key={side}
-                className={`flex w-56 flex-col lg:w-72 2xl:w-96 ${
+                className={`flex min-w-0 flex-1 flex-col ${
                   side === 'A' ? 'order-1 items-end text-right' : 'order-3 items-start text-left'
                 }`}
               >
+                {/* 8/24 — 팀명 숫자 한 단계 아래 8xl (9xl 은 6자 팀명이 잘림) */}
                 <span
-                  className="line-clamp-1 text-2xl font-extrabold lg:text-3xl 2xl:text-4xl"
+                  className="line-clamp-1 text-4xl font-extrabold lg:text-6xl 2xl:text-8xl"
                   style={{ color: SIDE_COLORS[side] }}
                 >
                   {team?.team || '팀 미입력'}
                 </span>
-                <span className="line-clamp-1 text-sm font-bold text-white/55 lg:text-base 2xl:text-xl">
+                <span className="mt-1 line-clamp-1 text-lg font-bold text-white/60 lg:text-2xl 2xl:text-4xl">
                   {team?.school || '학교 미입력'}
                 </span>
               </div>
