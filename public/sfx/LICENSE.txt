@@ -29,3 +29,9 @@ freesound_community-card-mixing-48088.mp3
 출처: "Card Mixing" by freesound_community — Pixabay (https://pixabay.com/sound-effects/card-mixing-48088/)
 라이선스: Pixabay Content License (무료 사용, 출처 표기 불요)
 용도: R2 추첨 셔플~배치 (2026-08-23 운영자 선곡)
+
+mixkit-winning-notification-2018.wav
+
+출처: "Winning notification" — Mixkit (https://mixkit.co/free-sound-effects/win/)
+라이선스: Mixkit Sound Effects Free License (무료 사용, 출처 표기 불요)
+용도: R1·R2 결과 발표 화면 (2026-08-23 운영자 선곡)
