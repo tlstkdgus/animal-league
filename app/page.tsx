@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { CharacterArt, SchoolTag, TRACK_COLORS, Wordmark } from '@/components/ui';
-import { armSfx, playChips, playFan, playFanfare, playFlip, playImpact, playShuffle, playVersus, playWin } from '@/lib/sfx';
+import { armSfx, playChips, playDrum, playFan, playFanfare, playFlip, playImpact, playShuffle, playVersus, playWin } from '@/lib/sfx';
 import universityLogos from '@/lib/universityLogos';
 import { isAnnounced, winningTeamId, type Match, type Team } from '@/lib/tournament';
 import type { ReactNode } from 'react';
@@ -536,7 +536,9 @@ function FreezeReveal({ state, match }: { state: PublicState; match: Match }) {
             >
               <div
                 className="chip-inner relative h-full w-full"
-                onAnimationStart={(e) => e.animationName === 'chipFlip' && playFlip()}
+                // 표 카드 플립 = 드럼 히트 (8/23 운영자 선곡 — 카드 놓기 폴리에서 교체.
+                // 추첨 카드 플립은 playFlip 유지)
+                onAnimationStart={(e) => e.animationName === 'chipFlip' && playDrum()}
                 onAnimationEnd={(e) => e.animationName === 'chipFlip' && setOpened((n) => Math.max(n, i + 1))}
                 style={{ animationDelay: `${(i * CHIP_INTERVAL_MS) / 1000}s` }}
               >
@@ -871,7 +873,7 @@ function ChampionTakeover({ state, final }: { state: PublicState; final: Match }
         const r = cardRef.current?.getBoundingClientRect();
         const ox = r ? ((r.left + r.width / 2) / innerWidth) * cv.width : cv.width / 2;
         const oy = r ? ((r.top + r.height / 2) / innerHeight) * H : H * 0.46;
-        playImpact(); // 슬램 임팩트 — 화면 흔들림·충격파와 같은 시점
+        playImpact(); // 슬램 임팩트(합성 유지) — 화면 흔들림·충격파와 같은 시점
         fireSparks(46, ox, oy);
         fireConfetti(90, ox, oy + 24, -Math.PI, 0, 17); // 카드 중앙 폭발
       }, CHAMP_IMPACT_MS),
