@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { CharacterArt, SchoolTag, TRACK_COLORS, Wordmark } from '@/components/ui';
-import { armSfx, playChips, playDrum, playFan, playFanfare, playFlip, playImpact, playShuffle, playVersus } from '@/lib/sfx';
+import { armSfx, playDrum, playFanfare, playFlip, playImpact, playShuffle, playVersus } from '@/lib/sfx';
 import universityLogos from '@/lib/universityLogos';
 import { isAnnounced, winningTeamId, type Match, type Team } from '@/lib/tournament';
 import type { ReactNode } from 'react';
@@ -453,14 +453,8 @@ function FreezeReveal({ state, match }: { state: PublicState; match: Match }) {
   // (JS 타이머로 CSS 타이밍을 수치 복제하면 두 시계가 되어 어긋난 전례 — PR #24)
   const [opened, setOpened] = useState(0);
 
-  // 도입 소리 — 덱 부채꼴. reduced-motion 은 칩 등장 모션이 없으니 생략.
-  // (mixkit 승리 노티는 #72 결과 화면→#73 철회→#75 이 자리→#77 최종 제거 —
-  // 8/23 운영자 "mixkit은 빼". 플립 드럼만 남긴다)
-  useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const timer = setTimeout(() => playFan(), 100);
-    return () => clearTimeout(timer);
-  }, []);
+  // 도입 무음 (8/23 운영자 — 부채꼴 폴리도 제거: 첫 플립 드럼과 겹친다.
+  // mixkit 노티는 #72→#73→#75→#77 로 제거됨. 이 화면 소리는 플립 드럼뿐)
 
   // 모션 축소 환경은 칩이 즉시 다 보이고 animationend 도 오지 않는다 — 집계도 즉시 전체
   useEffect(() => {
@@ -578,19 +572,15 @@ const RESULT_SCENE_MS = 6000;
 
 /**
  * 결과 화면 (2단계 공개의 2단계) — 운영자의 [발표]에 맞춰 승자를 크게.
- * 코멘트가 끝난 뒤의 공식 발표 순간이라 클래터 + 플링이 여기서 난다.
+ * 무음 (8/23 운영자 — 칩 클래터+플링도 제거: 공개 화면의 플립 드럼이 이미
+ * 발표 리듬을 담당하고, 이 화면은 MC 육성 멘트 위에 얹히는 시각 연출만).
  * 구성은 종전 시퀀스의 발표 단계를 되살렸다 (8/22 저녁 "화면 꽉 채워라"):
- * 멘트 + 라운드 표기 + 최종 집계 + 승자 강조 히어로. 히어로가 compact 가 아닌
+ * 라운드 표기 + 최종 집계 + 승자 강조 히어로. 히어로가 compact 가 아닌
  * 이유: 이 화면엔 카드 줄이 없어 세로가 남는다 — 히어로가 그 몫을 가져간다.
  */
 function ResultScene({ state, match }: { state: PublicState; match: Match }) {
   const votes = match.votes ?? [];
   const tally = (side: 'A' | 'B') => votes.filter((v) => v === side).length;
-
-  useEffect(() => {
-    const timer = setTimeout(() => playChips(), 150);
-    return () => clearTimeout(timer);
-  }, []);
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-8 py-6 lg:gap-10">
