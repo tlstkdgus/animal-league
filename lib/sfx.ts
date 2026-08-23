@@ -18,9 +18,9 @@ const SHUFFLE_SOURCE = '/sfx/freesound_community-card-mixing-48088.mp3';
 // 칼 스윙 (Pixabay Dragon Studio, 2.2초) — 운영자 직접 선곡 (8/23), VS 등장용.
 // 종전 hit-orchestra.ogg(Kenney jingles HIT15) 를 대체.
 const HIT_SOURCE = '/sfx/dragon-studio-sword-slice-2-393845.mp3';
-// 팡파레(fanfare.mp3)·우승 슬램 소리는 8/24 제거 ("일단 지워봐") — 파일은 유지.
-// ⚠ 큐시트 "팡파레 BGM" 은 화면 담당이었다 (음향 콘솔 목록에 없음, 8/22) —
-// 이 상태면 행사에서 팡파레가 아예 없다. 재도입 시 #52·#79 참조.
+// 팡파레(fanfare.mp3)·우승 슬램 소리는 8/24 제거 — 파일은 유지 (재도입 시 #52·#79).
+// 팡파레는 **음향 콘솔 담당으로 확정** (8/24 운영자 — 8/22 "화면 담당" 폐기,
+// 음향팀 큐시트에 결선 팡파레 큐 필요. 운영 안내 아티팩트 v7 반영).
 // 시네마틱 탐 히트 (Pixabay fronbondi_skegs, 1.68초) — 운영자 선곡 (8/23),
 // **투표 공개의 표 카드 플립**용 ("드럼 히트를 심사위원들 투표 공개할 때" —
 // 슬램 아님). 카드 놓기 폴리를 이 자리에서만 대체, 추첨 카드 플립은 종전 유지.
