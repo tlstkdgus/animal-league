@@ -18,7 +18,7 @@ import { CharacterArt, SchoolTag, TRACK_COLORS, Wordmark } from '@/components/ui
 import { armSfx, playDrum, playFlip, playShuffle, playVersus } from '@/lib/sfx';
 import universityLogos from '@/lib/universityLogos';
 import { isAnnounced, winningTeamId, type Match, type Team } from '@/lib/tournament';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 type PublicState = { teams: Team[]; matches: Match[]; rev: number };
 
@@ -513,22 +513,29 @@ function FreezeReveal({ state, match }: { state: PublicState; match: Match }) {
         {/* 실물 카드 문법 (8/20): 뒷면(card-back-Q)이 깔리고 한 장씩 앞면으로.
             앞면은 표받은 팀의 캐릭터 카드 — 테두리 진영색이 곧 개표 현황이다.
             플립 시작 = 효과음, 플립 종료 = 집계·이름 오픈 (단일 시계 원칙) */}
+        {/* 카드 폭 = min(기준 폭, 화면에 표 수만큼 한 줄로 들어가는 폭) (8/24 —
+            1920 미만 창에서 5장째가 줄바꿈돼 내려가던 것 수정. 프로젝터 1920 은
+            기준 폭 그대로, 좁은 창에서만 자동 축소) */}
         {votes.map((side, i) => (
-          <div key={i} className="flex flex-col items-center gap-3">
+          <div
+            key={i}
+            className="flex flex-col items-center gap-3"
+            style={{ '--chipw': `min(21rem, max(9rem, calc((100vw - 6rem) / ${votes.length} - 2rem)))` } as CSSProperties}
+          >
             {/* 심사위원 명의 — 카드 위 (8/23 운영자 지시), 플립이 끝난 뒤에만
                 (뒷면 상태에서 이름이 먼저 보이면 다음 표를 예고하는 꼴).
                 이름 없는 표(도입 전 데이터)는 자리만 유지 */}
             <span
-              className={`max-w-40 truncate text-center text-xl font-extrabold transition-opacity duration-500 lg:max-w-56 lg:text-2xl 2xl:max-w-84 2xl:text-3xl ${
+              className={`truncate text-center text-xl font-extrabold transition-opacity duration-500 lg:text-2xl 2xl:text-3xl ${
                 i < opened && names[i] ? 'opacity-100' : 'opacity-0'
               }`}
-              style={{ color: SIDE_COLORS[side] }}
+              style={{ color: SIDE_COLORS[side], maxWidth: 'var(--chipw)' }}
             >
               {names[i] ?? ' '}
             </span>
             <div
-              className="chip-outer relative aspect-2/3 w-40 lg:w-56 2xl:w-84"
-              style={{ animationDelay: `${i * 0.06}s` }}
+              className="chip-outer relative aspect-2/3"
+              style={{ animationDelay: `${i * 0.06}s`, width: 'var(--chipw)' }}
             >
               <div
                 className="chip-inner relative h-full w-full"
