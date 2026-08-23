@@ -1060,16 +1060,16 @@ export default function ViewerPage() {
           setResultScene(justAnnounced);
           setTimeout(() => setResultScene(null), RESULT_SCENE_MS);
         }
-        // 결선 특례 — 공개(=발표) 순간 표 연출을 1회 재생한 뒤 우승 무대로.
-        // 표 0건(백업 모드)은 연출 없이 즉시 우승 무대. 첫 폴링 가드(prevA)로
-        // 우승 확정 상태에서 새로고침한 화면의 재재생을 막는다 (§6.1)
+        // 결선 특례 — 공개(=발표) 순간 카운트다운 → 표 연출 → 우승 무대.
+        // 표 0건(백업 모드)도 **카운트다운은 돈다** (8/24 재확정 — MC 는 어차피
+        // 카운트한다. 리허설 점프 후 0표 공개에서 카운트가 안 떠 발견) —
+        // 카드 연출만 생략하고 우승 직행. 첫 폴링 가드(prevA)로 우승 확정
+        // 상태에서 새로고침한 화면의 재재생을 막는다 (§6.1)
         const finalJust = next.matches.find(
-          (m) => m.id === 'F' && isAnnounced(m) && prevA[m.id] === false && (m.votes?.length ?? 0) > 0,
+          (m) => m.id === 'F' && isAnnounced(m) && prevA[m.id] === false,
         );
         if (finalJust) {
-          // 순서 (8/24 운영자): 카운트다운 5초 → 표 공개 연출 → 우승 무대.
-          // MC "5-4-3-2-1" 과 함께 뛰고, 카운트가 끝나야 첫 카드가 열린다
-          pendingFinalRef.current = finalJust;
+          pendingFinalRef.current = (finalJust.votes?.length ?? 0) > 0 ? finalJust : null;
           setCountdown(true);
         }
       }
