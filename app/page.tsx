@@ -806,9 +806,8 @@ function ChampionTakeover({ state, final }: { state: PublicState; final: Match }
   const fxRef = useRef<HTMLCanvasElement | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
 
-  // 팡파레·슬램 소리는 8/24 제거 ("일단 지워봐") — 우승 무대는 일단 무음.
-  // ⚠ 큐시트의 "팡파레 BGM" 은 음향 콘솔 목록에 없어 화면이 담당하기로 했던 것
-  // (8/22 확인) — 이 상태로 가면 행사에서 팡파레가 아예 없다. 재도입 시 #52 참조.
+  // 팡파레·슬램 소리는 8/24 제거 — 우승 무대는 무음 확정. 팡파레는 음향 콘솔
+  // 담당 (8/24 운영자 확정 — 8/22 "화면 담당" 폐기, 음향팀 큐 필요. 재도입 시 #52).
 
   // 컨페티 — 마운트 1회 재생. 내부 좌표는 높이 1080 고정(원본 튜닝값 유지),
   // 폭만 화면 비율을 따른다. 발사 원점은 카드 DOM 실측 — 레이아웃이 달라도 정중앙.
