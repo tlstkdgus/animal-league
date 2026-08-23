@@ -18,9 +18,6 @@ const CHIPS_SOURCES = [1, 2].map((n) => `/sfx/chips-collide-${n}.ogg`);
 // 종전 hit-orchestra.ogg(Kenney jingles HIT15) 를 대체.
 const HIT_SOURCE = '/sfx/dragon-studio-sword-slice-2-393845.mp3';
 const FANFARE_SOURCE = '/sfx/fanfare.mp3'; // Hyper Ultra Fanfare (CC0, 6.2초)
-// 승리 노티 (Mixkit, 1.75초) — 운영자 선곡. #72 에서 결과 화면에 달았다가 #73 에서
-// 뺐고, 8/23 재지시로 **투표 공개(카드 연출) 시작** 큐로 재배선.
-const WIN_SOURCE = '/sfx/mixkit-winning-notification-2018.wav';
 // 시네마틱 탐 히트 (Pixabay fronbondi_skegs, 1.68초) — 운영자 선곡 (8/23),
 // **투표 공개의 표 카드 플립**용 ("드럼 히트를 심사위원들 투표 공개할 때" —
 // 슬램 아님). 카드 놓기 폴리를 이 자리에서만 대체, 추첨 카드 플립은 종전 유지.
@@ -33,7 +30,6 @@ let fanBuffer: AudioBuffer | null = null;
 let chipsBuffers: AudioBuffer[] | null = null;
 let hitBuffer: AudioBuffer | null = null;
 let fanfareBuffer: AudioBuffer | null = null;
-let winBuffer: AudioBuffer | null = null;
 let drumBuffer: AudioBuffer | null = null;
 let loadStarted = false;
 let flipIdx = 0;
@@ -56,14 +52,13 @@ async function load(c: AudioContext): Promise<void> {
     return c.decodeAudioData(await res.arrayBuffer());
   };
   try {
-    [flipBuffers, shuffleBuffer, fanBuffer, chipsBuffers, hitBuffer, fanfareBuffer, winBuffer, drumBuffer] = await Promise.all([
+    [flipBuffers, shuffleBuffer, fanBuffer, chipsBuffers, hitBuffer, fanfareBuffer, drumBuffer] = await Promise.all([
       Promise.all(FLIP_SOURCES.map(decode)),
       decode(SHUFFLE_SOURCE),
       decode(FAN_SOURCE),
       Promise.all(CHIPS_SOURCES.map(decode)),
       decode(HIT_SOURCE),
       decode(FANFARE_SOURCE),
-      decode(WIN_SOURCE),
       decode(DRUM_SOURCE),
     ]);
   } catch {
@@ -73,7 +68,6 @@ async function load(c: AudioContext): Promise<void> {
     chipsBuffers = null;
     hitBuffer = null;
     fanfareBuffer = null;
-    winBuffer = null;
     drumBuffer = null;
     loadStarted = false; // 폴링 화면이라 다음 armSfx/재생 경로에서 재시도할 여지를 남긴다
   }
@@ -285,26 +279,6 @@ export function playDrum(): void {
     src.buffer = drumBuffer;
     const gain = c.createGain();
     gain.gain.value = 0.9;
-    src.connect(gain).connect(c.destination);
-    src.start();
-  } catch {
-    /* 소리 실패가 화면을 막으면 안 된다 */
-  }
-}
-
-/**
- * 투표 공개 시작 — 승리 노티 샘플 (운영자 선곡). 카드 연출이 열리는 화면
- * (정지 화면·결선 표 연출) 진입에 1회. 발표는 모션이 아니라 정보라 호출부에서
- * reduced-motion 에도 낸다. #72(결과 화면)→#73(철회) 를 거쳐 이 자리로 확정.
- */
-export function playWin(): void {
-  const c = context();
-  if (!c || !winBuffer || c.state !== 'running') return;
-  try {
-    const src = c.createBufferSource();
-    src.buffer = winBuffer;
-    const gain = c.createGain();
-    gain.gain.value = 0.85;
     src.connect(gain).connect(c.destination);
     src.start();
   } catch {
