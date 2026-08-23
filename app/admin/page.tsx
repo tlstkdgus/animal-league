@@ -1065,6 +1065,45 @@ function SettingsTab({
         </div>
       </div>
 
+      <div className={card}>
+        <h2 className="mb-1 font-bold">리허설 점프</h2>
+        <p className="mb-3 text-xs leading-relaxed text-white/45">
+          경기 상태를 지우고 선택한 시점으로 바로 이동합니다 (8/24 — 리허설 중 실수해도
+          전체 초기화 없이 재시작). 지나가는 경기는 전부 A 승·표 0건으로 채워지고,
+          팀 · 심사위원 명단 · 코드는 유지됩니다. 심사 제출 기록은 삭제됩니다.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {(
+            [
+              ['pre', '시작 전'],
+              ['r1-live', 'R1-1 진행 중'],
+              ['r1-done', 'R1 완료 · 추첨 대기'],
+              ['drawn', 'R2 대진 확정'],
+              ['r2-done', 'R2 완료'],
+              ['final-live', '결선 진행 중'],
+              ['champion', '우승 확정'],
+            ] as const
+          ).map(([stage, label]) => (
+            <button
+              key={stage}
+              disabled={busy}
+              onClick={() =>
+                askConfirm({
+                  title: `리허설 점프 — ${label}`,
+                  body: `현재 경기 진행과 심사 제출이 삭제되고 "${label}" 시점으로 이동합니다.\n(팀·명단·코드는 유지)`,
+                  confirmLabel: '이동',
+                  danger: true,
+                  onConfirm: () => run({ action: 'seekStage', stage }),
+                })
+              }
+              className={btn}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className={`${card} border-[var(--live)]/30`}>
         <h2 className="mb-1 font-bold text-[var(--live)]">전체 초기화</h2>
         <p className="mb-3 text-xs leading-relaxed text-white/45">
