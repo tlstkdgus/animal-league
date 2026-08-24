@@ -373,12 +373,11 @@ function FocusLive({ state, match }: { state: PublicState; match: Match }) {
   // (승자 클래터와 같은 판단). deps 가 match.id 인 이유: 이전 경기가 live 인 채로
   // 다음 경기를 시작하면 언마운트 없이 경기만 바뀐다 — 그때도 울려야 한다.
   // setTimeout + 클린업은 StrictMode(dev) 이중 실행 방어 — 동기 호출이면 두 번 울린다.
-  // R2 는 무음 (8/23 운영자 지시) — R1·F 등장에만 낸다.
+  // 전 라운드 공통 (8/24 운영자 — 8/23 "R2 무음" 번복: "r2에 vs할때 칼소리 똑같이").
   useEffect(() => {
-    if (match.round === 2) return;
     const timer = setTimeout(() => playVersus(), 50);
     return () => clearTimeout(timer);
-  }, [match.id, match.round]);
+  }, [match.id]);
 
   return (
     <>
