@@ -316,8 +316,32 @@ function ConnectorHalf({ side, drawn }: { side: 'l' | 'r'; drawn: boolean }) {
 
 const SIDE_COLORS: Record<'A' | 'B', string> = { A: 'var(--orange)', B: '#009be4' };
 
-/** 투표 칩 오픈 간격 — 칩 애니메이션·카운터·시퀀스 전체 길이가 이 값 하나를 공유한다. */
+/** 투표 칩 오픈 간격(R1·R2) — 칩 애니메이션·카운터·시퀀스 길이가 이 값을 공유한다. */
 const CHIP_INTERVAL_MS = 1600;
+/** chipFlip 애니메이션 길이(ms) — 아래 CSS 와 같은 값이어야 한다. */
+const CHIP_FLIP_MS = 600;
+/** 결선 표 공개 총 길이(ms) — 첫 장 시작 ~ 마지막 장 플립 완료 (8/25 운영자 지정). */
+const FINAL_REVEAL_MS = 6000;
+/** 결선 가속 비율 — 간격이 매 장 이만큼씩 짧아진다 (등비 감소). */
+const FINAL_ACCEL_RATIO = 0.7;
+
+/**
+ * 표 카드 i 번째의 플립 시작 시각(ms).
+ * R1·R2 는 등간격. **결선은 점점 빨라진다** (8/25 운영자: "공개속도가 점점
+ * 빨라질 수 있나? 대신 전체 속도는 6초") — 간격을 등비(0.7)로 줄이되 합을
+ * 역산해 마지막 장이 정확히 FINAL_REVEAL_MS 에 플립을 끝내게 맞춘다.
+ * 표 장수가 3장이든 5장이든 총 길이는 6초로 같다.
+ */
+function chipDelayMs(i: number, count: number, isFinal: boolean): number {
+  if (!isFinal || count < 2) return i * CHIP_INTERVAL_MS;
+  const span = FINAL_REVEAL_MS - CHIP_FLIP_MS; // 마지막 장 "시작" 시각
+  const gaps = count - 1;
+  const r = FINAL_ACCEL_RATIO;
+  const first = (span * (1 - r)) / (1 - Math.pow(r, gaps)); // 등비수열 합 = span 역산
+  let t = 0;
+  for (let k = 0; k < i; k++) t += first * Math.pow(r, k);
+  return t;
+}
 
 function TeamHero({
   state,
@@ -542,7 +566,7 @@ function FreezeReveal({ state, match }: { state: PublicState; match: Match }) {
                 // 추첨 구간은 무음 — #91)
                 onAnimationStart={(e) => e.animationName === 'chipFlip' && playDrum()}
                 onAnimationEnd={(e) => e.animationName === 'chipFlip' && setOpened((n) => Math.max(n, i + 1))}
-                style={{ animationDelay: `${(i * CHIP_INTERVAL_MS) / 1000}s` }}
+                style={{ animationDelay: `${chipDelayMs(i, votes.length, match.id === 'F') / 1000}s` }}
               >
                 {/* 테두리·클리핑 래퍼 제거 (8/22 심야) — 에셋에 구운 곡률과 CSS
                     곡률이 근본적으로 안 맞아서(앞면 5.6~5.8%, 뒷면 6.1% 실측)
@@ -1632,7 +1656,8 @@ export default function ViewerPage() {
             if (m) {
               pendingFinalRef.current = null;
               setFinalSeq(m);
-              setTimeout(() => setFinalSeq(null), (m.votes?.length ?? 0) * CHIP_INTERVAL_MS + 800 + 1600);
+              // 6초 공개 + 3.4초 여운(마지막 집계를 읽을 시간) → 우승 무대
+              setTimeout(() => setFinalSeq(null), FINAL_REVEAL_MS + 3400);
             }
           }}
         />
