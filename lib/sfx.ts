@@ -169,10 +169,11 @@ export function playDrum(maxSec?: number): void {
     const gain = c.createGain();
     gain.gain.setValueAtTime(0.9, t);
     if (maxSec && maxSec > 0.08 && maxSec < drumBuffer.duration) {
-      // 끝 페이드로 잘라야 딸깍(클릭 노이즈) 없이 다음 히트에 자리를 내준다
-      const fade = Math.min(0.12, maxSec * 0.3);
+      // 짧은 컷은 "뚝" 끊긴다 — 0.67초 지점의 자연 감쇠가 아직 -17.8dB 라
+      // (실측, 8/25) 남은 시간의 절반을 지수 감쇠로 써서 원래 꼬리처럼 접는다.
+      const fade = Math.min(0.4, maxSec * 0.5);
       gain.gain.setValueAtTime(0.9, t + maxSec - fade);
-      gain.gain.linearRampToValueAtTime(0.0001, t + maxSec);
+      gain.gain.exponentialRampToValueAtTime(0.0008, t + maxSec); // 지수 = 자연 감쇠
       src.stop(t + maxSec);
     }
     src.connect(gain).connect(c.destination);
