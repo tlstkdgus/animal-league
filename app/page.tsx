@@ -939,7 +939,7 @@ function ChampionTakeover({ state, final }: { state: PublicState; final: Match }
         {/* 좌상단 브랜드 블록은 제거 (8/22 운영자: 로고·멘트 삭제 — 무대는 연출만) */}
 
         {/* 중앙 — CHAMPION → 카드 → 팀명 → 소속 */}
-        <div className="relative flex h-full flex-col items-center justify-center">
+        <div className="relative flex h-full flex-col items-center justify-center py-[8vh]">
           <div className="champ-crown relative flex items-center">
             <span className="champ-rule" aria-hidden />
             <span className="champ-word font-display" role="text" aria-label="CHAMPION">
@@ -1155,7 +1155,8 @@ export default function ViewerPage() {
         .champ-stage {
           /* 8/22 저녁: 좌상단 브랜드 블록이 빠진 무대 여백만큼 확대 (384→432).
              모든 이펙트·타이포가 --cardw 배수라 이 한 줄이 전체 스케일이다 */
-          --cardw: clamp(190px, 44vmin, 432px);
+          /* 8/24: 432→372 축소 — CHAMPION 과 소속이 화면 위아래 끝에 붙어 보였다 */
+          --cardw: clamp(170px, 38vmin, 372px);
           --cardh: calc(var(--cardw) * 1.484);
           --tsn: 0.1s; --tf: 0.52s; --tc: 0.56s; --tch: 1.04s; --tn: 1.5s; --tm: 1.92s;
           --eo: cubic-bezier(0.16, 1, 0.3, 1);
