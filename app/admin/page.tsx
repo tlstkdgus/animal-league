@@ -600,8 +600,9 @@ function MatchCard({
         </div>
       )}
 
-      {/* 2단계 공개의 2단계 (8/22, §6.1) — 공개 후 스크린은 카드 정지 화면에 머문다.
-          심사위원 코멘트가 끝나면 이 버튼으로 결과 화면을 송출.
+      {/* 2단계 공개의 2단계 (8/22, §6.1 · 8/25 개정) — 공개 후 스크린은 카드 정지
+          화면에 머문다. 심사위원 코멘트가 끝나면 이 버튼으로 대진표로 복귀시킨다
+          (결과 화면은 8/25 제거 — 발표 즉시 대진표).
           결선에는 안 뜬다 — 공개 즉시 발표 간주(결선 특례)라 isAnnounced 가 이미 true */}
       {match.status === 'done' && !isAnnounced(match) && (
         <div className="mt-2">
@@ -610,10 +611,10 @@ function MatchCard({
             onClick={onAnnounce}
             className="w-full animate-pulse rounded-lg bg-[var(--orange)] py-2 text-sm font-extrabold text-white disabled:opacity-40"
           >
-            📣 발표 — 결과 화면 송출
+            📣 코멘트 끝 — 대진표로 이동
           </button>
           <p className="mt-1 text-[11px] text-white/40">
-            스크린은 표 카드 정지 화면입니다. 심사위원 코멘트가 끝나면 누르세요.
+            스크린은 표 카드 정지 화면입니다. 심사위원 코멘트가 끝나면 누르세요 — 스크린이 바로 대진표로 돌아갑니다.
           </p>
         </div>
       )}
