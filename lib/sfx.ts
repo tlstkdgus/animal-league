@@ -5,13 +5,13 @@
 // 무대 운영 절차: 프로젝터 창을 띄운 뒤 화면을 한 번 클릭(또는 F 전체화면)하면 이후 자동.
 // 실패는 전부 조용히 삼킨다 — 소리는 연출 보조일 뿐, 화면 동작을 막으면 안 된다.
 //
-// 샘플: public/sfx/card-place-*.ogg — Kenney Casino Audio, CC0 (public/sfx/LICENSE.txt).
+// 현재 쓰는 샘플은 2종뿐: 칼 스윙(VS 등장) · 탐 히트(표 카드 플립).
+// 출처·라이선스는 public/sfx/LICENSE.txt. 쓰지 않게 된 샘플도 파일은 남겨둔다.
 // 행사장 네트워크 대비 셀프호스트 (폰트와 같은 이유, layout.tsx 참조).
 
-const FLIP_SOURCES = [1, 2, 3, 4].map((n) => `/sfx/card-place-${n}.ogg`);
-// 카드 믹싱 (Pixabay freesound_community, 4.6초) — 운영자 직접 선곡 (8/23).
-// 종전 card-shuffle.ogg 루프를 대체 — 실제 카드 리플 소리라 루프 없이 원샷.
-const SHUFFLE_SOURCE = '/sfx/freesound_community-card-mixing-48088.mp3';
+// 추첨 소리(카드 믹싱 셔플 + card-place 플립 폴리)는 8/24 제거 — 현장에서
+// 셔플과 4장 동시 플립 폴리가 겹쳐 지저분하게 들렸다. 추첨 구간은 무음.
+// 에셋(card-place-*.ogg, freesound_community-card-mixing-48088.mp3)은 유지.
 // 칩 클래터(chips-collide-*)+플링·덱 부채꼴(card-fan-1)은 8/23 제거 — 클래터는
 // 결과 화면 무음화, 부채꼴은 첫 플립 드럼과 겹침. 공개 화면 소리는 플립 드럼뿐.
 // 에셋 파일은 Kenney 팩 일부라 public/sfx 에 남긴다.
@@ -23,16 +23,13 @@ const HIT_SOURCE = '/sfx/dragon-studio-sword-slice-2-393845.mp3';
 // 음향팀 큐시트에 결선 팡파레 큐 필요. 운영 안내 아티팩트 v7 반영).
 // 시네마틱 탐 히트 (Pixabay fronbondi_skegs, 1.68초) — 운영자 선곡 (8/23),
 // **투표 공개의 표 카드 플립**용 ("드럼 히트를 심사위원들 투표 공개할 때" —
-// 슬램 아님). 카드 놓기 폴리를 이 자리에서만 대체, 추첨 카드 플립은 종전 유지.
+// 슬램 아님).
 const DRUM_SOURCE = '/sfx/fronbondi_skegs-drum-huge-cinematic-tom-hit-283585.mp3';
 
 let ctx: AudioContext | null = null;
-let flipBuffers: AudioBuffer[] | null = null;
-let shuffleBuffer: AudioBuffer | null = null;
 let hitBuffer: AudioBuffer | null = null;
 let drumBuffer: AudioBuffer | null = null;
 let loadStarted = false;
-let flipIdx = 0;
 
 function context(): AudioContext | null {
   if (typeof window === 'undefined') return null;
@@ -52,15 +49,8 @@ async function load(c: AudioContext): Promise<void> {
     return c.decodeAudioData(await res.arrayBuffer());
   };
   try {
-    [flipBuffers, shuffleBuffer, hitBuffer, drumBuffer] = await Promise.all([
-      Promise.all(FLIP_SOURCES.map(decode)),
-      decode(SHUFFLE_SOURCE),
-      decode(HIT_SOURCE),
-      decode(DRUM_SOURCE),
-    ]);
+    [hitBuffer, drumBuffer] = await Promise.all([decode(HIT_SOURCE), decode(DRUM_SOURCE)]);
   } catch {
-    flipBuffers = null;
-    shuffleBuffer = null;
     hitBuffer = null;
     drumBuffer = null;
     loadStarted = false; // 폴링 화면이라 다음 armSfx/재생 경로에서 재시도할 여지를 남긴다
@@ -84,28 +74,6 @@ export function armSfx(): (() => void) | undefined {
     removeEventListener('pointerdown', unlock);
     removeEventListener('keydown', unlock);
   };
-}
-
-/**
- * 카드 셔플 — R2 추첨의 셔플(2.4초)~배치(1초) 구간을 채운다 (기본 3.4초).
- * 샘플(4.6초 원샷)이 구간보다 길어서 끝 0.3초 페이드아웃으로 잘라 정지 클릭음을 막는다.
- */
-export function playShuffle(durationSec = 3.4): void {
-  const c = context();
-  if (!c || !shuffleBuffer || c.state !== 'running') return;
-  try {
-    const src = c.createBufferSource();
-    src.buffer = shuffleBuffer;
-    const gain = c.createGain();
-    gain.gain.setValueAtTime(0.6, c.currentTime);
-    gain.gain.setValueAtTime(0.6, c.currentTime + durationSec - 0.3);
-    gain.gain.linearRampToValueAtTime(0, c.currentTime + durationSec);
-    src.connect(gain).connect(c.destination);
-    src.start();
-    src.stop(c.currentTime + durationSec);
-  } catch {
-    /* 소리 실패가 화면을 막으면 안 된다 */
-  }
 }
 
 /**
@@ -186,16 +154,12 @@ export function playVersus(): void {
 /**
  * 표 카드 플립 — 시네마틱 탐 히트 샘플 (8/23 운영자 선곡: "드럼 히트를 심사위원들
  * 투표 공개할 때"). 투표 공개 화면의 카드가 한 장씩 뒤집히는 순간마다 1회 —
- * 1.6초 간격 연타라 꼬리(1.68초)가 살짝 겹치는 건 의도된 리듬. 샘플이 아직
- * 로드 전이면 종전 카드 놓기 폴리 폴백. 추첨 카드 플립은 playFlip 그대로.
+ * 1.6초 간격 연타라 꼬리(1.68초)가 살짝 겹치는 건 의도된 리듬. 샘플 미로드 시엔
+ * 무음 — 폴백이던 카드 놓기 폴리는 8/24 추첨 무음화와 함께 제거됐다.
  */
 export function playDrum(): void {
   const c = context();
-  if (!c || c.state !== 'running') return;
-  if (!drumBuffer) {
-    playFlip();
-    return;
-  }
+  if (!c || !drumBuffer || c.state !== 'running') return;
   try {
     const src = c.createBufferSource();
     src.buffer = drumBuffer;
@@ -208,18 +172,3 @@ export function playDrum(): void {
   }
 }
 
-/** 카드 플립 1회 — 4개 샘플 라운드로빈 (같은 소리 연발로 기계적으로 들리는 것 방지). */
-export function playFlip(): void {
-  const c = context();
-  if (!c || !flipBuffers || c.state !== 'running') return;
-  try {
-    const src = c.createBufferSource();
-    src.buffer = flipBuffers[flipIdx++ % flipBuffers.length];
-    const gain = c.createGain();
-    gain.gain.value = 0.5;
-    src.connect(gain).connect(c.destination);
-    src.start();
-  } catch {
-    /* 소리 실패가 화면을 막으면 안 된다 */
-  }
-}
