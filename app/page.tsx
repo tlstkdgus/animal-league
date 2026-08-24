@@ -488,6 +488,16 @@ function FreezeReveal({ state, match }: { state: PublicState; match: Match }) {
 
   const openTally = (side: 'A' | 'B') => votes.slice(0, opened).filter((v) => v === side).length;
 
+  // i 번째 히트가 쓸 수 있는 길이(초) — 다음 카드 플립 시작 0.06초 전까지.
+  // 마지막 장은 undefined (원본 1.68초 전부). 등간격 R1·R2 도 1.54초로 정리된다
+  const isFinalReveal = match.id === 'F';
+  const drumFitSec = (i: number): number | undefined => {
+    if (i + 1 >= votes.length) return undefined;
+    const gapMs =
+      chipDelayMs(i + 1, votes.length, isFinalReveal) - chipDelayMs(i, votes.length, isFinalReveal);
+    return gapMs / 1000 - 0.06;
+  };
+
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-8 py-6 lg:gap-10 2xl:gap-12">
       {/* 라운드 + 집계 — 뒷줄 가독이 목표라 화면 요소 중 최대 크기 */}
@@ -562,9 +572,10 @@ function FreezeReveal({ state, match }: { state: PublicState; match: Match }) {
             >
               <div
                 className="chip-inner relative h-full w-full"
-                // 표 카드 플립 = 드럼 히트 (8/23 운영자 선곡 — 카드 놓기 폴리에서 교체.
-                // 추첨 구간은 무음 — #91)
-                onAnimationStart={(e) => e.animationName === 'chipFlip' && playDrum()}
+                // 표 카드 플립 = 드럼 히트 (8/23 운영자 선곡). 꼬리는 **다음 카드가
+                // 열리기 직전까지만** — 결선 가속(#94) 뒤 히트가 겹쳐 드럼롤로 몰린다는
+                // 현장 지적(8/25). 마지막 장은 제한 없음(승부 확정 타격)
+                onAnimationStart={(e) => e.animationName === 'chipFlip' && playDrum(drumFitSec(i))}
                 onAnimationEnd={(e) => e.animationName === 'chipFlip' && setOpened((n) => Math.max(n, i + 1))}
                 style={{ animationDelay: `${chipDelayMs(i, votes.length, match.id === 'F') / 1000}s` }}
               >

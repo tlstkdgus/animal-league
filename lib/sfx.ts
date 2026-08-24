@@ -154,19 +154,29 @@ export function playVersus(): void {
 /**
  * 표 카드 플립 — 시네마틱 탐 히트 샘플 (8/23 운영자 선곡: "드럼 히트를 심사위원들
  * 투표 공개할 때"). 투표 공개 화면의 카드가 한 장씩 뒤집히는 순간마다 1회 —
- * 1.6초 간격 연타라 꼬리(1.68초)가 살짝 겹치는 건 의도된 리듬. 샘플 미로드 시엔
- * 무음 — 폴백이던 카드 놓기 폴리는 8/24 추첨 무음화와 함께 제거됐다.
+ * @param maxSec 이 시간 안에 꼬리를 끊는다 — **다음 카드가 열리기 직전**을 넘기면
+ *   히트가 겹쳐 드럼롤처럼 몰린다 (8/25 결선 가속 후 현장 지적). 생략하면 원본
+ *   1.68초 전부 (마지막 장 = 승부 확정 타격이라 꼬리를 살린다).
+ *   샘플 미로드 시엔 무음 — 폴백이던 카드 놓기 폴리는 8/24 추첨 무음화와 함께 제거.
  */
-export function playDrum(): void {
+export function playDrum(maxSec?: number): void {
   const c = context();
   if (!c || !drumBuffer || c.state !== 'running') return;
   try {
+    const t = c.currentTime;
     const src = c.createBufferSource();
     src.buffer = drumBuffer;
     const gain = c.createGain();
-    gain.gain.value = 0.9;
+    gain.gain.setValueAtTime(0.9, t);
+    if (maxSec && maxSec > 0.08 && maxSec < drumBuffer.duration) {
+      // 끝 페이드로 잘라야 딸깍(클릭 노이즈) 없이 다음 히트에 자리를 내준다
+      const fade = Math.min(0.12, maxSec * 0.3);
+      gain.gain.setValueAtTime(0.9, t + maxSec - fade);
+      gain.gain.linearRampToValueAtTime(0.0001, t + maxSec);
+      src.stop(t + maxSec);
+    }
     src.connect(gain).connect(c.destination);
-    src.start();
+    src.start(t);
   } catch {
     /* 소리 실패가 화면을 막으면 안 된다 */
   }
