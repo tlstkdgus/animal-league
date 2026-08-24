@@ -577,43 +577,9 @@ function FreezeReveal({ state, match }: { state: PublicState; match: Match }) {
   );
 }
 
-/** 결과 화면 홀드 길이(ms) — 발표 액션 후 이만큼 보여주고 대진표로 복귀한다. */
-const RESULT_SCENE_MS = 6000;
-
-/**
- * 결과 화면 (2단계 공개의 2단계) — 운영자의 [발표]에 맞춰 승자를 크게.
- * 무음 (8/23 운영자 — 칩 클래터+플링도 제거: 공개 화면의 플립 드럼이 이미
- * 발표 리듬을 담당하고, 이 화면은 MC 육성 멘트 위에 얹히는 시각 연출만).
- * 구성은 종전 시퀀스의 발표 단계를 되살렸다 (8/22 저녁 "화면 꽉 채워라"):
- * 라운드 표기 + 최종 집계 + 승자 강조 히어로. 히어로가 compact 가 아닌
- * 이유: 이 화면엔 카드 줄이 없어 세로가 남는다 — 히어로가 그 몫을 가져간다.
- */
-function ResultScene({ state, match }: { state: PublicState; match: Match }) {
-  const votes = match.votes ?? [];
-  const tally = (side: 'A' | 'B') => votes.filter((v) => v === side).length;
-
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-8 py-6 lg:gap-10">
-      {/* "결과를 발표합니다" 멘트는 8/23 삭제 — MC 가 육성으로 하는 말이라 화면 중복 */}
-      <div className="grid w-full max-w-6xl grid-cols-1 items-center gap-8 lg:grid-cols-[1fr_auto_1fr] lg:gap-12">
-        <TeamHero state={state} index={match.a} dimmed={match.winner !== 'A'} winner={match.winner === 'A'} />
-        <div className="flex flex-col items-center gap-2">
-          <span className="font-display text-2xl text-(--orange) lg:text-4xl 2xl:text-5xl">
-            {match.round === 3 ? 'FINAL' : `ROUND ${match.round}-${match.id.split('-')[1]}`}
-          </span>
-          {votes.length > 0 && (
-            <div className="font-en flex items-center gap-5 text-5xl font-extrabold tabular-nums lg:text-6xl 2xl:text-7xl">
-              <span style={{ color: SIDE_COLORS.A }}>{tally('A')}</span>
-              <span className="text-2xl text-white/25">:</span>
-              <span style={{ color: SIDE_COLORS.B }}>{tally('B')}</span>
-            </div>
-          )}
-        </div>
-        <TeamHero state={state} index={match.b} dimmed={match.winner !== 'B'} winner={match.winner === 'B'} />
-      </div>
-    </div>
-  );
-}
+// 결과 화면(ResultScene)은 8/25 행사 아침 제거 — R1 도 [발표] 즉시 대진표로
+// (운영자: "vs > 투표 공개 > 대진표로 하자"). R2 는 #73 부터 이미 즉시 복귀.
+// [발표]는 이제 "정지 화면 → 대진표 이동" 버튼이다 (운영 콘솔 문구도 동기화).
 
 // ------------------------------------------------------------
 // R2 추첨 연출 — 모으기 → 뒤집어 셔플 → 배치·공개 (8/22 저녁 재지시:
@@ -1009,8 +975,6 @@ function ChampionTakeover({ state, final }: { state: PublicState; final: Match }
 
 export default function ViewerPage() {
   const [state, setState] = useState<PublicState | null>(null);
-  // 결과 화면 — 발표(announced) 전이 순간의 경기 스냅샷 고정, RESULT_SCENE_MS 후 대진표
-  const [resultScene, setResultScene] = useState<Match | null>(null);
   // 결선 표 연출 — 결선 공개는 즉시 발표 간주(결선 특례, 8/22 저녁)라 정지 화면이
   // 없다. 대신 이 1회성 시퀀스가 표 카드를 다 연 뒤 우승 테이크오버에 자리를 내준다
   const [finalSeq, setFinalSeq] = useState<Match | null>(null);
@@ -1040,15 +1004,8 @@ export default function ViewerPage() {
       // 결선은 결과 화면 대신 우승 테이크오버가 바로 뜬다
       const prevA = prevAnnouncedRef.current;
       if (prevA) {
-        // R2 는 결과 화면 생략 (8/23 운영자 지시) — 발표 즉시 대진표로 (승자는
-        // 결승 대기 카드 선반영으로 이미 보인다). 결과 화면은 R1 만.
-        const justAnnounced = next.matches.find(
-          (m) => isAnnounced(m) && prevA[m.id] === false && m.round === 1 && (m.votes?.length ?? 0) > 0,
-        );
-        if (justAnnounced) {
-          setResultScene(justAnnounced);
-          setTimeout(() => setResultScene(null), RESULT_SCENE_MS);
-        }
+        // R1·R2 [발표] = 즉시 대진표 복귀 (8/25 — R1 결과 화면도 제거. 승자는
+        // 카드 하이라이트·집결 박스·결승 선반영으로 이미 보인다)
         // 결선 특례 — 공개(=발표) 순간 카운트다운 → 표 연출 → 우승 무대.
         // 표 0건(백업 모드)도 **카운트다운은 돈다** (8/24 재확정 — MC 는 어차피
         // 카운트한다. 리허설 점프 후 0표 공개에서 카운트가 안 떠 발견) —
@@ -1507,11 +1464,9 @@ export default function ViewerPage() {
 
       {/* 헤더·푸터·안내 문구는 전부 제거 (8/22 운영자: 무대에 필요없는 멘트 삭제) —
           화면은 연출과 대진표만 남긴다. 본문 우선순위:
-          표 정지 화면 > 결과 화면 > 결선 표 연출 > 추첨 시퀀스 > live 대결 포커스 > 대진표 (§6.1) */}
+          표 정지 화면 > 결선 표 연출 > 추첨 시퀀스 > live 대결 포커스 > 대진표 (§6.1) */}
       {frozen ? (
         <FreezeReveal state={state} match={frozen} />
-      ) : resultScene ? (
-        <ResultScene state={state} match={resultScene} />
       ) : finalSeq ? (
         <FreezeReveal state={state} match={finalSeq} />
       ) : drawSeq ? (
