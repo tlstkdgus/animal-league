@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { CharacterArt, SchoolTag, TRACK_COLORS, Wordmark } from '@/components/ui';
-import { armSfx, playDrum, playFlip, playShuffle, playVersus } from '@/lib/sfx';
+import { armSfx, playDrum, playVersus } from '@/lib/sfx';
 import universityLogos from '@/lib/universityLogos';
 import { isAnnounced, winningTeamId, type Match, type Team } from '@/lib/tournament';
 import type { CSSProperties, ReactNode } from 'react';
@@ -540,7 +540,7 @@ function FreezeReveal({ state, match }: { state: PublicState; match: Match }) {
               <div
                 className="chip-inner relative h-full w-full"
                 // 표 카드 플립 = 드럼 히트 (8/23 운영자 선곡 — 카드 놓기 폴리에서 교체.
-                // 추첨 카드 플립은 playFlip 유지)
+                // 추첨 구간은 무음 — #91)
                 onAnimationStart={(e) => e.animationName === 'chipFlip' && playDrum()}
                 onAnimationEnd={(e) => e.animationName === 'chipFlip' && setOpened((n) => Math.max(n, i + 1))}
                 style={{ animationDelay: `${(i * CHIP_INTERVAL_MS) / 1000}s` }}
@@ -643,7 +643,6 @@ function DrawCard({ state, index, order }: { state: PublicState; index: number |
     >
       <div
         className="chip-inner relative h-full w-full"
-        onAnimationStart={(e) => e.animationName === 'chipFlip' && playFlip()}
         style={{
           animation: `drawToBack 0.45s ease 2.3s forwards,
             chipFlip 0.6s cubic-bezier(0.3, 0.8, 0.3, 1) ${DRAW_FLIP_BASE_S + order * 0.5}s forwards`,
@@ -703,18 +702,9 @@ function DrawSequence({ state, semis }: { state: PublicState; semis: [Match, Mat
     });
   }, []);
 
-  // 소리 시계 — 뒤집기(2.3s) 플립 1번, 셔플(2.9s). 공개 플립 4번은 카드 쪽
-  // animationstart 가 낸다. reduced-motion 은 모션이 없으니 소리도 생략.
-  // setTimeout + 클린업 = StrictMode 이중 실행 방어.
-  useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const flipTimer = setTimeout(() => playFlip(), 2300);
-    const shuffleTimer = setTimeout(() => playShuffle(), 2900);
-    return () => {
-      clearTimeout(flipTimer);
-      clearTimeout(shuffleTimer);
-    };
-  }, []);
+  // 추첨 구간은 **무음** (8/24 운영자 — 현장에서 소리가 이상하게 들림).
+  // 종전: 뒤집기 폴리 1번 + 카드 믹싱 셔플 + 카드 4장 동시 플립 폴리 4중 —
+  // 겹쳐서 지저분해지는 게 원인으로 보인다. 재도입 시 #91 diff 참조.
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-12 py-6">
