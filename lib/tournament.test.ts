@@ -15,6 +15,7 @@ import {
   findJudge,
   getMatch,
   judgeSlug,
+  judgeRevealOrder,
   removeJudge,
   liveMatch,
   matchesJudgeCode,
@@ -520,6 +521,62 @@ test('결선 순서: {표, 명의} 쌍도 쌍이 깨지지 않고 같은 규칙�
       { w: 'A', name: '최' },
     ],
   );
+});
+
+// ------------------------------------------------------------
+// R1·R2 표 공개 순서 (8/25) — judgeRevealOrder (셔플 대체, 결선은 finalRevealOrder 유지)
+// ------------------------------------------------------------
+
+const jPairs = (...ws: [string, 'A' | 'B'][]) => ws.map(([name, w]) => ({ name, w }));
+
+test('R1·R2 순서: 제출 순서가 아니라 운영 콘솔 명단 순서로 깔린다', () => {
+  const judges = ['김', '이', '박', '최', '정'];
+  // 제출은 정 → 박 → 김 → 최 → 이 순으로 들어왔다 (votesForMatch 는 ts 오름차순)
+  const submitted = jPairs(['정', 'A'], ['박', 'B'], ['김', 'A'], ['최', 'B'], ['이', 'A']);
+  assert.deepEqual(
+    judgeRevealOrder(submitted, judges, (p) => p.name).map((p) => p.name),
+    judges,
+  );
+});
+
+test('R1·R2 순서: 표와 명의 쌍이 깨지지 않는다', () => {
+  const submitted = jPairs(['박', 'B'], ['김', 'A'], ['이', 'A']);
+  assert.deepEqual(judgeRevealOrder(submitted, ['김', '이', '박'], (p) => p.name), [
+    { name: '김', w: 'A' },
+    { name: '이', w: 'A' },
+    { name: '박', w: 'B' },
+  ]);
+});
+
+test('R1·R2 순서: 명의 대조는 judgeSlug 기준 — 공백·대소문자 차이를 넘는다', () => {
+  const submitted = jPairs(['kim  lee', 'A'], ['박', 'B']);
+  assert.deepEqual(
+    judgeRevealOrder(submitted, ['박', 'KimLee'], (p) => p.name).map((p) => p.name),
+    ['박', 'kim  lee'],
+  );
+});
+
+test('R1·R2 순서: 명단에 없는 명의(제출 뒤 삭제)는 버리지 않고 뒤로, 서로의 순서는 유지', () => {
+  // 카드를 빼면 집계 숫자와 카드 수가 어긋난다 — 표는 그대로 두고 순서만 민다
+  const submitted = jPairs(['정', 'A'], ['이', 'B'], ['한', 'A'], ['김', 'A']);
+  assert.deepEqual(
+    judgeRevealOrder(submitted, ['김', '이'], (p) => p.name).map((p) => p.name),
+    ['김', '이', '정', '한'],
+  );
+});
+
+test('R1·R2 순서: 명단이 비어 있으면(백업 모드) 넘겨받은 순서 그대로', () => {
+  const submitted = jPairs(['정', 'A'], ['김', 'B']);
+  assert.deepEqual(
+    judgeRevealOrder(submitted, [], (p) => p.name).map((p) => p.name),
+    ['정', '김'],
+  );
+});
+
+test('R1·R2 순서: 입력 배열을 건드리지 않는다 (mutate 재시도 안에서 도는 순수 함수)', () => {
+  const submitted = jPairs(['정', 'A'], ['김', 'B']);
+  judgeRevealOrder(submitted, ['김', '정'], (p) => p.name);
+  assert.deepEqual(submitted.map((p) => p.name), ['정', '김']);
 });
 
 test('공개: voteNames 가 votes 와 같은 순서로 저장된다 (정지 화면 명의 표기)', () => {

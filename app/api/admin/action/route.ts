@@ -13,8 +13,8 @@ import {
   revealResult,
   announceResult,
   finalRevealOrder,
+  judgeRevealOrder,
   drawRound2,
-  shuffle,
   setFinal,
   updateTeam,
   setJudgeCode,
@@ -119,14 +119,31 @@ export async function POST(request: Request): Promise<Response> {
           const winner = body.winner;
           // 스크린 투표 오픈 연출용 표 — {진영, 명의} 쌍으로 싣는다 (§6.1 8/22 저녁:
           // 정지 화면 카드에 심사위원 이름 표기, §3 "명의를 떼고 공개" 번복 — 운영자 결정).
-          // 제출 순서(ts)는 여전히 지운다: 셔플/연출 정렬이 순서를 새로 정한다.
+          // 제출 순서(ts)는 여전히 지운다: 명단/연출 정렬이 순서를 새로 정한다.
           const rows = await votesForMatch(matchId);
-          // 결선은 연출 정렬(패자 우선 번갈아 — 마지막 장이 승부 확정, §6.1 8/22), 나머지는 셔플
           const pairs = rows.map((r) => ({ w: r.winner, name: r.name }));
-          const ordered = matchId === 'F' ? finalRevealOrder(pairs, winner, (p) => p.w) : shuffle(pairs);
-          const anonVotes = ordered.map((p) => p.w);
-          const names = ordered.map((p) => p.name);
-          return ok({ state: adminView(await mutate((s) => revealResult(s, matchId, winner, anonVotes, names))) });
+          return ok({
+            state: adminView(
+              await mutate((s) => {
+                // 결선은 연출 정렬 그대로 — 패자 우선 번갈아, 마지막 장이 승부 확정
+                // (§6.1 8/22. 8/25 명단 순서 전환 논의에서 결선은 **유지**로 확정).
+                // R1·R2 만 운영 콘솔 심사위원 명단 순서 (8/25 운영자 — 셔플 폐기).
+                // 정렬이 mutate 안에 있는 이유 — 명단은 갓 읽은 상태에서 봐야 하고,
+                // R1·R2 에서 무작위가 사라져 rev 충돌 재시도에도 같은 순서가 나온다
+                const ordered =
+                  matchId === 'F'
+                    ? finalRevealOrder(pairs, winner, (p) => p.w)
+                    : judgeRevealOrder(pairs, s.judges, (p) => p.name);
+                return revealResult(
+                  s,
+                  matchId,
+                  winner,
+                  ordered.map((p) => p.w),
+                  ordered.map((p) => p.name),
+                );
+              }),
+            ),
+          });
         }
 
         case 'announceResult': {

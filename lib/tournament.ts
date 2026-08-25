@@ -42,7 +42,8 @@ export type Match = {
   winner: Side | null;
   /**
    * 결과 공개 시점의 표 (스크린 투표 오픈 연출용, §6.1).
-   * 서버가 순서를 섞어(결선은 연출 정렬, §6.1 8/22) 저장한다. 공개 전(ready/live)에는 null.
+   * 서버가 순서를 정해(R1·R2 는 심사위원 명단 순서 8/25 / 결선은 연출 정렬 §6.1 8/22)
+   * 저장한다. 공개 전(ready/live)에는 null.
    */
   votes: Side[] | null;
   /**
@@ -432,6 +433,31 @@ export function finalRevealOrder<T>(
     w += 1;
   }
   return out;
+}
+
+/**
+ * R1·R2 표 공개 순서 (8/25 운영자) — 셔플 대신 운영 콘솔 심사위원 명단 순서.
+ * 카드에 명의가 실리면서(§6.1 8/22 저녁) 무작위 셔플은 경기마다 이름 자리가 튀어
+ * 무대와 어긋났다. 명단은 착석·MC 소개 순서와 같으므로 그 순서로 깔면 맞는다.
+ *
+ * **결선은 이 함수를 쓰지 않는다** — finalRevealOrder 의 연출 정렬(패자 우선
+ * 번갈아, 마지막 장이 승부 확정)을 그대로 둔다. 8/25 에 결선까지 명단 순서로
+ * 넘겼다가 되돌린 자리다: 명단 순서는 마지막 장이 승부를 확정한다는 보장이 없어
+ * (명단 앞쪽이 승자 표로 몰리면 중간에서 확정) 결선 연출이 죽는다. **재론 금지.**
+ *
+ * 명단에 없는 명의(제출 뒤 삭제된 심사위원)는 뒤로 밀고 서로의 순서는 유지한다 —
+ * Array.prototype.sort 가 안정 정렬이라 넘겨받은 순서(ts 오름차순)가 그대로 남는다.
+ * 표를 버리지 않는 이유: 집계는 이미 그 표를 세고 있어서 카드만 빠지면 숫자와
+ * 카드 수가 어긋난다.
+ */
+export function judgeRevealOrder<T>(
+  votes: readonly T[],
+  judges: readonly string[],
+  name: (v: T) => string,
+): T[] {
+  const rank = new Map(judges.map((j, i) => [judgeSlug(j), i]));
+  const at = (v: T) => rank.get(judgeSlug(name(v))) ?? Number.MAX_SAFE_INTEGER;
+  return [...votes].sort((x, y) => at(x) - at(y));
 }
 
 /**
